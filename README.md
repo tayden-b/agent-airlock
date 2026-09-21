@@ -1,34 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Airlock
 
-## Getting Started
+Shadow-mode safety console for multi-agent coding sessions.
 
-First, run the development server:
+Airlock watches Claude Code sessions through their HTTP hooks, redacts secrets,
+scores every tool action's risk (scope / exposure / impact / reversibility), and
+shows a live console of what each agent is doing — labeled `allow`, `review`, or
+`deny`. In v1 nothing is ever blocked: verdicts show what a policy _would_ have
+done, so it can be tuned against real traffic.
+
+## Quickstart
+
+Requires Node ≥ 20.19 (see `.nvmrc`) and pnpm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. To see data without a live Claude Code session,
+replay the bundled multi-agent fixture against the running server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm replay fixtures/sessions/research-fanout.jsonl
+```
 
-## Learn More
+## Pointing Claude Code at it
 
-To learn more about Next.js, take a look at the following resources:
+Copy `.claude/settings.example.json` into your project's `.claude/settings.json`
+(or merge the `hooks` block into `~/.claude/settings.json`). Claude Code then
+POSTs every lifecycle event to `POST /api/hooks/claude-code`. The endpoint acks
+in milliseconds and never blocks. See `docs/INTEGRATIONS.md` for the full
+event-mapping table.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Risk scoring
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Two classifier providers run per action (`airlock.config.ts`):
 
-## Deploy on Vercel
+- **`rules`** — deterministic: per-tool-kind baselines + 18 pattern rules
+  (pipe-to-shell, credential paths, `.env` reads, force push, …). Always on.
+- **`jev`** — TypeSafe Jev System One scoring, one question per risk dimension.
+  Active when `TYPESAFE_API_KEY` is set in the environment; skipped otherwise.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Provider scores merge in `src/server/policy/` and are decided by fixed
+thresholds — `deny ≥ 0.80`, `review ≥ 0.50`, `allow` only at confidence ≥ 0.6 —
+plus force-deny rules. Every assessment records which providers ran, which rules
+hit, and a human-readable reason.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+```bash
+pnpm check        # lint + typecheck + test + build
+pnpm test         # vitest
+pnpm replay …     # replay a fixture session
+```
+
+Data lives in `./data/airlock.db` (disposable sqlite; delete to reset). All
+shapes are defined by Zod contracts in `src/contracts/`.
+
+## Docs
+
+- `docs/PRD.md` — what it is and why
+- `docs/SCOPE.md` — what v1 does and deliberately doesn't
+- `docs/ARCHITECTURE.md` — pipeline, layers, identity model
+- `docs/UI-SPEC.md` — console layout and behavior
+- `docs/INTEGRATIONS.md` — hook config + event mapping
+- `docs/BUILD-PLAN.md` — how it was built, PR by PR
