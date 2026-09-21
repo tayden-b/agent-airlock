@@ -1,5 +1,6 @@
 import { normalizeClaudeCodeEvent } from "@/adapters/claude-code/normalize";
 import { ingestEvent } from "@/server/ingestion";
+import { hooksAuthorized } from "@/server/hooks-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
  * risk assessment is scheduled asynchronously after the ack.
  */
 export async function POST(request: Request): Promise<Response> {
+  if (!hooksAuthorized(request)) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   let raw: unknown;
   try {
     raw = await request.json();

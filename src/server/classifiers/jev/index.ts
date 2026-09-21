@@ -1,7 +1,15 @@
-import { TypeSafeClient, score } from "@typesafe-ai/sdk";
+import { TypeSafeClient, choice, noul, score } from "@typesafe-ai/sdk";
 import type { JsonValue, ScoreQuestion } from "@typesafe-ai/sdk";
-import { DIMENSIONS } from "@/contracts";
-import type { DimensionName, DimensionScore } from "@/contracts";
+import { DIMENSIONS, SessionPhaseSchema, SessionVerdictSchema } from "@/contracts";
+import type {
+  Action,
+  Agent,
+  DimensionName,
+  DimensionScore,
+  Run,
+  SessionPhase,
+  SessionVerdict,
+} from "@/contracts";
 import type { AssessmentInput, Classifier, ProviderAssessment } from "../types";
 
 /**
@@ -136,3 +144,85 @@ export const jevClassifier: Classifier = {
     return createJevClassifier(getClient()).assess(input);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Session-level judgments: rolling phase + end-of-session verdict.
+// ---------------------------------------------------------------------------
+
+/** Throws when Jev is unconfigured — callers treat it like a provider failure. */
+export function jevClient(): TypeSafeClient {
+  return getClient();
+}
+
+/**
+ * What the session is doing right now, judged over its most recent actions.
+ * Called throttled from ingestion; the result lands on the run row.
+ */
+export async function judgePhase(
+  client: TypeSafeClient,
+  run: Run,
+  recent: Action[],
+): Promise<SessionPhase> {
+  const { answers } = await client.systemOne({
+    state: {
+      context:
+        "An AI coding agent session is in progress. Based on its most recent actions, judge what it is currently doing.",
+      mission: run.mission,
+      recent_actions: recent.map((a) => a.inputSummary),
+    } satisfies Record<string, JsonValue>,
+    questions: {
+      phase: choice("What best describes the session's current activity?", {
+        exploring:
+          "Reading, searching, or listing — gathering information before changing anything",
+        implementing: "Editing files or running state-changing commands — doing the main work",
+        verifying: "Running tests, builds, or checks — confirming the work is correct",
+        looping: "Repeating similar actions or retrying without clear progress",
+      }),
+    },
+  });
+  return SessionPhaseSchema.parse(answers.phase.choice);
+}
+
+/** End-of-session judgment: what the session was and whether it got there. */
+export async function judgeSessionVerdict(
+  client: TypeSafeClient,
+  run: Run,
+  agents: Agent[],
+  actions: Action[],
+): Promise<SessionVerdict> {
+  const verdicts = { allow: 0, review: 0, deny: 0, pending: 0 };
+  for (const a of actions) verdicts[a.assessment?.verdict ?? "pending"] += 1;
+  const { answers } = await client.systemOne({
+    state: {
+      context:
+        "An AI coding agent session has ended. Judge what kind of session it was and whether it accomplished its mission.",
+      mission: run.mission,
+      agents: agents.map((a) => ({ type: a.agentType, mission: a.mission ?? a.description })),
+      action_count: actions.length,
+      risk_verdicts: verdicts,
+      action_summaries: actions.slice(-20).map((a) => a.inputSummary),
+    } satisfies Record<string, JsonValue>,
+    questions: {
+      archetype: choice("What best describes this session overall?", {
+        research: "Mostly reading and searching to answer questions or gather information",
+        bugfix: "Diagnosing and fixing a specific defect",
+        feature: "Building new functionality",
+        refactor: "Restructuring existing code without new behavior",
+        ops: "Running commands, installs, or infrastructure work with minimal code edits",
+        "sensitive-access": "Notable access to credentials, private data, or protected paths",
+        mixed: "No single archetype dominates",
+      }),
+      accomplished: noul(
+        "Based on the mission and the actions taken, did the session accomplish what it set out to do?",
+        {
+          true: "The actions plausibly completed the mission",
+          false: "The mission was abandoned, blocked, or left unresolved",
+        },
+      ),
+    },
+  });
+  return SessionVerdictSchema.parse({
+    archetype: answers.archetype.choice,
+    accomplished: answers.accomplished.noul,
+  });
+}

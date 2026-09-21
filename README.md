@@ -32,6 +32,36 @@ POSTs every lifecycle event to `POST /api/hooks/claude-code`. The endpoint acks
 in milliseconds and never blocks. See `docs/INTEGRATIONS.md` for the full
 event-mapping table.
 
+## Deployed
+
+The endpoint can be hosted remotely (e.g. Vercel + Turso) so multiple machines
+report to one console. Set `AIRLOCK_HOOK_SECRET` in the deployment env and send
+it from the agent machine as the `x-airlock-key` header (or `?key=` query param)
+on every hook URL — when configured, unauthenticated event POSTs get a `401`.
+Leave it unset for open local dev.
+
+## Token usage
+
+Hook payloads don't carry token counts, but Claude Code writes a per-session
+JSONL transcript that does. A small SessionEnd **command** hook
+(`scripts/airlock-usage-reporter.js`, copy to `~/.claude/airlock-usage.js`) reads
+the transcript path from the hook payload, sums `message.usage`, and POSTs a
+`run.usage` event to `POST /api/events`. The console shows total tokens and a
+cached/input/output breakdown per run. Set `AIRLOCK_URL` and
+`AIRLOCK_HOOK_SECRET` on the agent machine to point it at a remote deployment.
+
+## Jev insights
+
+Beyond per-action scores, two session-level Jev judgments run when the `jev`
+provider is active:
+
+- **Phase** — a live label of what the session is doing (`exploring`,
+  `implementing`, `verifying`, `looping`), re-judged over the rolling action
+  window (throttled to ~12s). Shown as a chip on running sessions.
+- **Session verdict** — at SessionEnd, an archetype classification
+  (`research` / `bugfix` / `feature` / `refactor` / `ops` / `sensitive-access` /
+  `mixed`) plus a 0–1 "mission accomplished" estimate. Shown as a badge.
+
 ## Risk scoring
 
 Two classifier providers run per action (`airlock.config.ts`):

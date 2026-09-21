@@ -46,6 +46,10 @@ export const AirlockConfigSchema = z.object({
   stream: z.object({
     heartbeatMs: z.number().int().positive(),
   }),
+  hooks: z.object({
+    /** When set, hook/event POSTs must carry it as ?key= or x-airlock-key. */
+    secret: z.string().optional(),
+  }),
   storage: z.object({
     /** libsql URL, e.g. file:./data/airlock.db or libsql://…turso.io */
     url: z.string().min(1),
@@ -59,6 +63,7 @@ function applyEnvOverrides(config: AirlockConfig, env: NodeJS.ProcessEnv): Airlo
   const next: AirlockConfig = structuredClone(config);
   if (env.AIRLOCK_DATABASE_URL) next.storage.url = env.AIRLOCK_DATABASE_URL;
   if (env.AIRLOCK_DATABASE_AUTH_TOKEN) next.storage.authToken = env.AIRLOCK_DATABASE_AUTH_TOKEN;
+  if (env.AIRLOCK_HOOK_SECRET) next.hooks.secret = env.AIRLOCK_HOOK_SECRET;
   if (env.AIRLOCK_CLASSIFIER) {
     const providers = env.AIRLOCK_CLASSIFIER.split(",")
       .map((p) => p.trim())

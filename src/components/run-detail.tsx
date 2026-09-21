@@ -5,12 +5,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DIMENSIONS,
   type Action,
+  type Agent,
   type RunSnapshot,
   type StreamEvent,
   type Verdict,
 } from "@/contracts";
 import { useStreamEvents } from "@/lib/stream";
-import { VERDICT_STYLES, formatTime, riskTone } from "@/lib/display";
+import {
+  PHASE_STYLES,
+  VERDICT_STYLES,
+  formatTime,
+  formatTokens,
+  riskTone,
+  usageShares,
+} from "@/lib/display";
 
 function VerdictBadge({ action }: { action: Action }) {
   const verdict: Verdict | "pending" = action.assessment?.verdict ?? "pending";
@@ -38,7 +46,7 @@ function DimensionBar({ name, risk }: { name: string; risk: number }) {
   );
 }
 
-function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string }) {
+function ActionRow({ action }: { action: Action }) {
   const [open, setOpen] = useState(false);
   const assessment = action.assessment;
 
@@ -50,9 +58,6 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
       >
         <span className="w-16 shrink-0 font-mono text-[11px] text-zinc-400">
           {formatTime(action.proposedAt)}
-        </span>
-        <span className="w-24 shrink-0 truncate font-mono text-[11px] text-zinc-500">
-          {agentLabel}
         </span>
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-zinc-800">
           {action.inputSummary}
@@ -172,10 +177,16 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
     return () => clearInterval(id);
   }, [snapshot.run.id]);
 
-  const agentLabel = useMemo(() => {
-    const map = new Map(snapshot.agents.map((a) => [a.id, a]));
-    return (action: Action) => map.get(action.agentId)?.agentId ?? "?";
-  }, [snapshot.agents]);
+  // Group actions under their agent, preserving agent order (main first).
+  const actionsByAgent = useMemo(() => {
+    const map = new Map<string, Action[]>();
+    for (const a of snapshot.actions) {
+      const list = map.get(a.agentId) ?? [];
+      list.push(a);
+      map.set(a.agentId, list);
+    }
+    return map;
+  }, [snapshot.actions]);
 
   const tally = useMemo(() => {
     const t = { allow: 0, review: 0, deny: 0, pending: 0 };
@@ -206,6 +217,19 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
             >
               {run.status}
             </span>
+            {run.phase && run.status === "active" && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${PHASE_STYLES[run.phase]}`}
+              >
+                {run.phase}
+              </span>
+            )}
+            {run.sessionVerdict && (
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 ring-1 ring-zinc-200 ring-inset">
+                {run.sessionVerdict.archetype} · {Math.round(run.sessionVerdict.accomplished * 100)}
+                % accomplished
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-zinc-500">
             <span
@@ -224,48 +248,72 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
             {tally.deny} deny · {tally.review} review · {tally.allow} allow
             {tally.pending > 0 ? ` · ${tally.pending} pending` : ""}
           </span>
+          {run.usage && (
+            <span className="font-mono">{formatTokens(run.usage.totalTokens)} tokens</span>
+          )}
         </div>
+        {run.usage && (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex h-1.5 w-48 overflow-hidden rounded-full bg-zinc-100">
+              {usageShares(run.usage).map((s) => (
+                <div
+                  key={s.label}
+                  className={s.tone}
+                  style={{ width: `${s.share * 100}%` }}
+                  title={`${s.label}: ${formatTokens(Math.round(s.share * run.usage!.totalTokens))}`}
+                />
+              ))}
+            </div>
+            <span className="text-[11px] text-zinc-400">
+              {formatTokens(run.usage.cacheReadTokens)} cached ·{" "}
+              {formatTokens(run.usage.inputTokens)} in · {formatTokens(run.usage.outputTokens)} out
+            </span>
+          </div>
+        )}
       </header>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-          Agents
-        </h2>
-        <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
-          {snapshot.agents.map((agent) => (
-            <li key={agent.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  agent.status === "running" ? "animate-pulse bg-emerald-500" : "bg-zinc-300"
-                }`}
-              />
-              <span className="w-28 shrink-0 font-mono text-xs text-zinc-700">{agent.agentId}</span>
-              <span className="shrink-0 text-[11px] tracking-wide text-zinc-400 uppercase">
-                {agent.agentType}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
-                {agent.description ?? agent.mission ?? ""}
-              </span>
-              <span className="text-[11px] text-zinc-400">{agent.status}</span>
-            </li>
+      {snapshot.agents.map((agent) => (
+        <AgentSection key={agent.id} agent={agent} actions={actionsByAgent.get(agent.id) ?? []} />
+      ))}
+      {snapshot.actions.length === 0 && (
+        <div className="rounded-xl border border-dashed border-zinc-300 px-6 py-12 text-center text-sm text-zinc-400">
+          No actions yet.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AgentSection({ agent, actions }: { agent: Agent; actions: Action[] }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="mb-6">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="mb-2 flex w-full items-center gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-zinc-50"
+      >
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+            agent.status === "running" ? "animate-pulse bg-emerald-500" : "bg-zinc-300"
+          }`}
+        />
+        <span className="font-mono text-xs font-medium text-zinc-700">{agent.agentId}</span>
+        <span className="text-[11px] tracking-wide text-zinc-400 uppercase">{agent.agentType}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
+          {agent.description ?? agent.mission ?? ""}
+        </span>
+        <span className="text-[11px] text-zinc-400">
+          {actions.length} {actions.length === 1 ? "action" : "actions"} · {agent.status}
+        </span>
+        <span className="text-zinc-300">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && actions.length > 0 && (
+        <ul className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          {actions.map((action) => (
+            <ActionRow key={action.id} action={action} />
           ))}
         </ul>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-          Actions
-        </h2>
-        <ul className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-          {snapshot.actions.length === 0 ? (
-            <li className="px-5 py-8 text-center text-sm text-zinc-400">No actions yet.</li>
-          ) : (
-            snapshot.actions.map((action) => (
-              <ActionRow key={action.id} action={action} agentLabel={agentLabel(action)} />
-            ))
-          )}
-        </ul>
-      </section>
-    </div>
+      )}
+    </section>
   );
 }

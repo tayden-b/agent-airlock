@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { McpServerRefSchema, SourceSchema } from "./domain";
+import { McpServerRefSchema, SourceSchema, UsageSchema } from "./domain";
 
 /**
  * Normalized events: the adapter -> ingestion boundary.
@@ -92,10 +92,18 @@ export const ActionFailedEventSchema = z.object({
   isInterrupt: z.boolean().optional(),
 });
 
+/** Token usage for a session, reported by the source's own telemetry. */
+export const RunUsageEventSchema = z.object({
+  ...base,
+  kind: z.literal("run.usage"),
+  usage: UsageSchema,
+});
+
 export const NormalizedEventSchema = z.discriminatedUnion("kind", [
   RunStartedEventSchema,
   RunMissionEventSchema,
   RunEndedEventSchema,
+  RunUsageEventSchema,
   AgentStartedEventSchema,
   AgentMissionEventSchema,
   AgentStoppedEventSchema,
@@ -115,3 +123,4 @@ export type AgentStoppedEvent = z.infer<typeof AgentStoppedEventSchema>;
 export type ActionProposedEvent = z.infer<typeof ActionProposedEventSchema>;
 export type ActionCompletedEvent = z.infer<typeof ActionCompletedEventSchema>;
 export type ActionFailedEvent = z.infer<typeof ActionFailedEventSchema>;
+export type RunUsageEvent = z.infer<typeof RunUsageEventSchema>;
