@@ -76,7 +76,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="outline"
-                        className="font-mono text-[10px] uppercase tracking-wide text-zinc-500"
+                        className="font-mono text-[10px] tracking-wide text-zinc-500 uppercase"
                       >
                         {run.source}
                       </Badge>

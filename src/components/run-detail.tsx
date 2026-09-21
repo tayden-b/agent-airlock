@@ -26,16 +26,14 @@ function VerdictBadge({ action }: { action: Action }) {
 function DimensionBar({ name, risk }: { name: string; risk: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-24 text-[11px] uppercase tracking-wide text-zinc-400">{name}</span>
+      <span className="w-24 text-[11px] tracking-wide text-zinc-400 uppercase">{name}</span>
       <div className="h-1.5 flex-1 rounded-full bg-zinc-100">
         <div
           className={`h-1.5 rounded-full ${riskTone(risk)}`}
           style={{ width: `${Math.round(risk * 100)}%` }}
         />
       </div>
-      <span className="w-9 text-right font-mono text-[11px] text-zinc-500">
-        {risk.toFixed(2)}
-      </span>
+      <span className="w-9 text-right font-mono text-[11px] text-zinc-500">{risk.toFixed(2)}</span>
     </div>
   );
 }
@@ -60,7 +58,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
           {action.inputSummary}
         </span>
         {action.outcome === "failure" && (
-          <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+          <span className="text-[10px] font-medium tracking-wide text-zinc-400 uppercase">
             failed
           </span>
         )}
@@ -71,7 +69,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
         <div className="border-t border-zinc-100 bg-zinc-50/60 px-5 py-4">
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+              <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
                 Assessment
               </p>
               {assessment ? (
@@ -79,11 +77,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
                   <p className="mt-2 text-xs leading-relaxed text-zinc-700">{assessment.reason}</p>
                   <div className="mt-3 space-y-1.5">
                     {DIMENSIONS.map((dim) => (
-                      <DimensionBar
-                        key={dim}
-                        name={dim}
-                        risk={assessment.dimensions[dim].risk}
-                      />
+                      <DimensionBar key={dim} name={dim} risk={assessment.dimensions[dim].risk} />
                     ))}
                   </div>
                   <p className="mt-3 text-[11px] text-zinc-400">
@@ -98,7 +92,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
             <div>
               {assessment && assessment.ruleHits.length > 0 && (
                 <>
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                  <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
                     Rules fired
                   </p>
                   <ul className="mt-2 space-y-1">
@@ -113,7 +107,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
               )}
               {action.error && (
                 <>
-                  <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                  <p className="mt-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
                     Error
                   </p>
                   <p className="mt-1 font-mono text-xs text-rose-600">{action.error}</p>
@@ -121,7 +115,7 @@ function ActionRow({ action, agentLabel }: { action: Action; agentLabel: string 
               )}
               {action.resultPreview && (
                 <>
-                  <p className="mt-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                  <p className="mt-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
                     Result
                   </p>
                   <p className="mt-1 line-clamp-3 font-mono text-[11px] text-zinc-500">
@@ -220,7 +214,7 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
       </header>
 
       <section className="mb-8">
-        <h2 className="mb-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+        <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
           Agents
         </h2>
         <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
@@ -231,10 +225,8 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
                   agent.status === "running" ? "animate-pulse bg-emerald-500" : "bg-zinc-300"
                 }`}
               />
-              <span className="w-28 shrink-0 font-mono text-xs text-zinc-700">
-                {agent.agentId}
-              </span>
-              <span className="shrink-0 text-[11px] uppercase tracking-wide text-zinc-400">
+              <span className="w-28 shrink-0 font-mono text-xs text-zinc-700">{agent.agentId}</span>
+              <span className="shrink-0 text-[11px] tracking-wide text-zinc-400 uppercase">
                 {agent.agentType}
               </span>
               <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
@@ -247,7 +239,7 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
       </section>
 
       <section>
-        <h2 className="mb-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+        <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
           Actions
         </h2>
         <ul className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
