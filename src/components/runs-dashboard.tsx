@@ -39,7 +39,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       refreshTimer.current = setTimeout(refresh, 200);
     },
-    [refresh]
+    [refresh],
   );
 
   const live = useStreamEvents(onEvent);
