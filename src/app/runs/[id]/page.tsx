@@ -5,7 +5,13 @@ import { RunDetail } from "@/components/run-detail";
 export const dynamic = "force-dynamic";
 
 export default async function RunPage({ params }: PageProps<"/runs/[id]">) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  let id = rawId;
+  try {
+    id = decodeURIComponent(rawId);
+  } catch {
+    // keep raw value
+  }
   const snapshot = await getRunSnapshot(id);
   if (!snapshot) notFound();
   return (
