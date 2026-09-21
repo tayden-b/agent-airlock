@@ -58,14 +58,15 @@ export const ClaudeSubagentStartSchema = z.looseObject({
   ...common,
   hook_event_name: z.literal("SubagentStart"),
   agent_id: z.string().min(1),
-  agent_type: z.string().min(1),
+  /** Claude Code 2.x can send an empty string for agent_type. */
+  agent_type: z.string(),
 });
 
 export const ClaudeSubagentStopSchema = z.looseObject({
   ...common,
   hook_event_name: z.literal("SubagentStop"),
   agent_id: z.string().min(1),
-  agent_type: z.string().min(1),
+  agent_type: z.string(),
   agent_transcript_path: z.string().optional(),
   last_assistant_message: z.string().optional(),
   stop_hook_active: z.boolean().optional(),
