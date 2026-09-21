@@ -189,7 +189,7 @@ describe("normalizeClaudeCodeEvent fixtures", () => {
   it("subagent-stop with empty agent_type falls back to unknown", () => {
     const result = normalizeClaudeCodeEvent(
       {
-        ...loadFixture("subagent-stop.json"),
+        ...(loadFixture("subagent-stop.json") as Record<string, unknown>),
         agent_type: "",
       },
       options,
