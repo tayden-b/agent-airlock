@@ -58,6 +58,36 @@ export const RunStatusSchema = z.enum(["active", "ended"]);
 export const AgentStatusSchema = z.enum(["running", "completed", "failed"]);
 export const OutcomeSchema = z.enum(["success", "failure"]);
 
+/** What the session is currently doing — Jev's rolling judgment over recent actions. */
+export const SessionPhaseSchema = z.enum(["exploring", "implementing", "verifying", "looping"]);
+export type SessionPhase = z.infer<typeof SessionPhaseSchema>;
+
+/** Jev's end-of-session judgment: what the session was, and whether it got there. */
+export const SessionVerdictSchema = z.object({
+  archetype: z.enum([
+    "research",
+    "bugfix",
+    "feature",
+    "refactor",
+    "ops",
+    "sensitive-access",
+    "mixed",
+  ]),
+  /** Probability that the session accomplished its stated mission. */
+  accomplished: z.number().min(0).max(1),
+});
+export type SessionVerdict = z.infer<typeof SessionVerdictSchema>;
+
+/** Token usage reported by the source (Claude Code transcripts, etc.). */
+export const UsageSchema = z.object({
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  cacheReadTokens: z.number().int().nonnegative(),
+  cacheCreationTokens: z.number().int().nonnegative(),
+  totalTokens: z.number().int().nonnegative(),
+});
+export type Usage = z.infer<typeof UsageSchema>;
+
 export const RunSchema = z.object({
   id: z.string().min(1),
   source: SourceSchema,
@@ -68,6 +98,9 @@ export const RunSchema = z.object({
   startedAt: z.string(),
   endedAt: z.string().nullable(),
   updatedAt: z.string(),
+  phase: SessionPhaseSchema.nullable().default(null),
+  sessionVerdict: SessionVerdictSchema.nullable().default(null),
+  usage: UsageSchema.nullable().default(null),
 });
 export type Run = z.infer<typeof RunSchema>;
 

@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunSummary, StreamEvent, Verdict } from "@/contracts";
 import { useStreamEvents } from "@/lib/stream";
-import { VERDICT_STYLES, formatRelative, verdictLabel } from "@/lib/display";
+import {
+  PHASE_STYLES,
+  VERDICT_STYLES,
+  formatRelative,
+  formatTokens,
+  verdictLabel,
+} from "@/lib/display";
 import { Badge } from "@/components/ui/badge";
 
 function VerdictPill({ verdict, count }: { verdict: Verdict | "pending"; count: number }) {
@@ -51,6 +57,10 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
     return () => clearInterval(id);
   }, [refresh]);
 
+  // Empty session start/end pairs are noise; active runs stay visible even
+  // before their first action lands.
+  const visible = summaries.filter((s) => s.actions > 0 || s.run.status === "active");
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
       <header className="mb-10 flex items-baseline justify-between">
@@ -68,7 +78,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
         </div>
       </header>
 
-      {summaries.length === 0 ? (
+      {visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 px-6 py-16 text-center">
           <p className="text-sm text-zinc-500">No sessions observed yet.</p>
           <p className="mt-2 font-mono text-xs text-zinc-400">
@@ -77,7 +87,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
         </div>
       ) : (
         <ul className="divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white">
-          {summaries.map(({ run, agents, actions, verdicts }) => (
+          {visible.map(({ run, agents, actions, verdicts }) => (
             <li key={run.id}>
               <Link
                 href={`/runs/${encodeURIComponent(run.id)}`}
@@ -104,6 +114,23 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {run.sessionVerdict && (
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 ring-inset">
+                        {run.sessionVerdict.archetype}
+                      </span>
+                    )}
+                    {run.phase && run.status === "active" && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${PHASE_STYLES[run.phase]}`}
+                      >
+                        {run.phase}
+                      </span>
+                    )}
+                    {run.usage && (
+                      <span className="font-mono text-[11px] text-zinc-400">
+                        {formatTokens(run.usage.totalTokens)} tok
+                      </span>
+                    )}
                     <span className="text-xs text-zinc-400">
                       {agents} {agents === 1 ? "agent" : "agents"} · {actions}{" "}
                       {actions === 1 ? "action" : "actions"}

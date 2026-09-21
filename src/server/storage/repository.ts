@@ -7,11 +7,16 @@ import {
   type Action,
   type Agent,
   type Assessment,
+  SessionVerdictSchema,
+  UsageSchema,
   type McpServerRef,
   type Run,
   type RunSnapshot,
   type RunSummary,
+  type SessionPhase,
+  type SessionVerdict,
   type Source,
+  type Usage,
 } from "@/contracts";
 import { getDb, type AirlockDb } from "./client";
 import { actions, agents, runs } from "./schema";
@@ -30,7 +35,12 @@ type AgentRow = typeof agents.$inferSelect;
 type ActionRow = typeof actions.$inferSelect;
 
 function toRun(row: RunRow): Run {
-  return RunSchema.parse(row);
+  return RunSchema.parse({
+    ...row,
+    phase: row.phase ?? null,
+    sessionVerdict: parseJsonColumn(row.sessionVerdictJson, (v) => SessionVerdictSchema.parse(v)),
+    usage: parseJsonColumn(row.usageJson, (v) => UsageSchema.parse(v)),
+  });
 }
 
 function toAgent(row: AgentRow): Agent {
@@ -131,6 +141,29 @@ export async function getRun(id: string, db?: AirlockDb): Promise<Run | null> {
   const handle = db ?? (await getDb());
   const rows = await handle.select().from(runs).where(eq(runs.id, id)).limit(1);
   return rows[0] ? toRun(rows[0]) : null;
+}
+
+/** Sets derived metadata on a run (Jev phase, session verdict, token usage). */
+export async function updateRunMeta(
+  runId: string,
+  patch: { phase?: SessionPhase | null; sessionVerdict?: SessionVerdict; usage?: Usage },
+  db?: AirlockDb,
+): Promise<Run> {
+  const handle = db ?? (await getDb());
+  await handle
+    .update(runs)
+    .set({
+      ...(patch.phase !== undefined ? { phase: patch.phase } : {}),
+      ...(patch.sessionVerdict !== undefined
+        ? { sessionVerdictJson: JSON.stringify(patch.sessionVerdict) }
+        : {}),
+      ...(patch.usage !== undefined ? { usageJson: JSON.stringify(patch.usage) } : {}),
+      updatedAt: now(),
+    })
+    .where(eq(runs.id, runId));
+  const run = await getRun(runId, handle);
+  if (!run) throw new Error(`run disappeared after updateRunMeta: ${runId}`);
+  return run;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +330,22 @@ export async function getAction(id: string, db?: AirlockDb): Promise<Action | nu
   const handle = db ?? (await getDb());
   const rows = await handle.select().from(actions).where(eq(actions.id, id)).limit(1);
   return rows[0] ? toAction(rows[0]) : null;
+}
+
+/** Most recent N actions in a run — feeds rolling judgments like phase. */
+export async function getRecentActions(
+  runId: string,
+  limit = 8,
+  db?: AirlockDb,
+): Promise<Action[]> {
+  const handle = db ?? (await getDb());
+  const rows = await handle
+    .select()
+    .from(actions)
+    .where(eq(actions.runId, runId))
+    .orderBy(desc(actions.proposedAt), desc(actions.id))
+    .limit(limit);
+  return rows.map(toAction).reverse();
 }
 
 /** The full context a classifier sees for one action. */

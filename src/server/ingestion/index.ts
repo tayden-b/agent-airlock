@@ -20,7 +20,11 @@ import {
   ensureRun,
   getAction,
   getActionContext,
+  getRecentActions,
+  getRun,
+  getRunSnapshot,
   insertActionIfAbsent,
+  updateRunMeta,
   upsertAgent,
   upsertRun,
 } from "@/server/storage/repository";
@@ -105,6 +109,64 @@ function scheduleAssessment(actionId: string): void {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Session-level Jev judgments: rolling phase + end-of-session verdict.
+// ---------------------------------------------------------------------------
+
+const PHASE_MIN_INTERVAL_MS = 12_000;
+const phaseGlobal = globalThis as { __airlockPhaseAt?: Map<string, number> };
+
+/** Jev must be configured; phase/verdict silently skip when it is not. */
+function jevEnabled(): boolean {
+  return getConfig().classifier.providers.includes("jev");
+}
+
+/**
+ * Re-judges the session's current phase at most once per PHASE_MIN_INTERVAL_MS.
+ * Serverless instances may each keep their own throttle — worst case is a few
+ * extra Jev calls, never wrong data.
+ */
+function schedulePhaseUpdate(runId: string, db?: AirlockDb): void {
+  if (!jevEnabled()) return;
+  const last = phaseGlobal.__airlockPhaseAt ?? new Map<string, number>();
+  phaseGlobal.__airlockPhaseAt = last;
+  const prev = last.get(runId) ?? 0;
+  if (Date.now() - prev < PHASE_MIN_INTERVAL_MS) return;
+  last.set(runId, Date.now());
+  void (async () => {
+    const { jevClient, judgePhase } = await import("@/server/classifiers/jev");
+    const [run, recent] = await Promise.all([getRun(runId, db), getRecentActions(runId, 8, db)]);
+    if (!run || recent.length === 0 || run.status !== "active") return;
+    const phase = await judgePhase(jevClient(), run, recent);
+    if (phase !== run.phase) {
+      const updated = await updateRunMeta(runId, { phase }, db);
+      publishStream({ type: "run.upserted", run: updated });
+    }
+  })().catch((err) => {
+    console.warn(`[airlock] phase judgment failed for ${runId}:`, err);
+  });
+}
+
+/** One-shot session verdict when the run ends. */
+function scheduleSessionVerdict(runId: string, db?: AirlockDb): void {
+  if (!jevEnabled()) return;
+  void (async () => {
+    const { jevClient, judgeSessionVerdict } = await import("@/server/classifiers/jev");
+    const snapshot = await getRunSnapshot(runId, db);
+    if (!snapshot || snapshot.run.sessionVerdict) return;
+    const verdict = await judgeSessionVerdict(
+      jevClient(),
+      snapshot.run,
+      snapshot.agents,
+      snapshot.actions,
+    );
+    const updated = await updateRunMeta(runId, { sessionVerdict: verdict }, db);
+    publishStream({ type: "run.upserted", run: updated });
+  })().catch((err) => {
+    console.warn(`[airlock] session verdict failed for ${runId}:`, err);
+  });
+}
+
 /** Ensures the run and main-agent rows exist for events that may arrive first. */
 async function ensureContext(event: NormalizedEvent, db?: AirlockDb): Promise<{ runId: string }> {
   const runId = runIdFor(event.source, event.sessionId);
@@ -182,6 +244,13 @@ export async function ingestEvent(
       for (const agent of await completeRunningAgents(runId, event.at, db)) {
         publishStream({ type: "agent.upserted", agent });
       }
+      scheduleSessionVerdict(runId, db);
+      return;
+    }
+
+    case "run.usage": {
+      const run = await updateRunMeta(runId, { usage: event.usage }, db);
+      publishStream({ type: "run.upserted", run });
       return;
     }
 
@@ -247,6 +316,7 @@ export async function ingestEvent(
         await assessAction(action.id, db);
       } else {
         scheduleAssessment(action.id);
+        schedulePhaseUpdate(runId, db);
       }
       return;
     }
@@ -291,6 +361,7 @@ export async function ingestEvent(
           scheduleAssessment(action.id);
         }
       }
+      if (!options.awaitAssessment) schedulePhaseUpdate(runId, db);
       return;
     }
   }

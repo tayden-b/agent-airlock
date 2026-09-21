@@ -20,6 +20,9 @@ export const runs = sqliteTable(
     startedAt: text("started_at").notNull(),
     endedAt: text("ended_at"),
     updatedAt: text("updated_at").notNull(),
+    phase: text("phase"),
+    sessionVerdictJson: text("session_verdict_json"),
+    usageJson: text("usage_json"),
   },
   (t) => [index("runs_updated_at_idx").on(t.updatedAt)],
 );

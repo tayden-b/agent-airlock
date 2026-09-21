@@ -5,6 +5,8 @@ import type { AirlockConfig } from "@/server/config";
  *
  * Environment overrides (see .env.example):
  *   AIRLOCK_DATABASE_URL  -> storage.url
+ *   AIRLOCK_DATABASE_AUTH_TOKEN -> storage.authToken (remote libsql, e.g. Turso)
+ *   AIRLOCK_HOOK_SECRET   -> hooks.secret (require ?key= or x-airlock-key on event POSTs)
  *   AIRLOCK_CLASSIFIER    -> classifier.providers (comma-separated, e.g. "rules")
  *   TYPESAFE_API_KEY      -> required for the "jev" provider; without it Jev is skipped
  */
@@ -30,6 +32,7 @@ const config: AirlockConfig = {
   stream: {
     heartbeatMs: 15_000,
   },
+  hooks: {},
   storage: {
     url: "file:./data/airlock.db",
   },

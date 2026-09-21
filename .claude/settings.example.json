@@ -55,7 +55,12 @@
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 },
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/airlock-usage.js\"",
+            "timeout": 10
+          }
         ]
       }
     ]

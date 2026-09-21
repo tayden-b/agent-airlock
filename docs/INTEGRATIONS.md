@@ -124,9 +124,23 @@ pnpm replay fixtures/sessions/research-fanout.jsonl
 
 `research-fanout.jsonl` is one raw hook payload per line: a session that fans out three Explore subagents, including sensitive reads, an exfiltration-shaped `curl`, an out-of-role `Edit`, and a force push.
 
+## Generic event intake
+
+`POST /api/events` accepts an already-normalized event (the `NormalizedEvent`
+contract that adapters emit). Anything that can produce those shapes — a
+transcript watcher, another agent's hook system, a shim — can report without
+going through the Claude Code normalizer. The usage reporter
+(`scripts/airlock-usage-reporter.js`) uses it for `run.usage` events.
+
+## Authentication
+
+Set `AIRLOCK_HOOK_SECRET` on the server to require a shared secret on both
+intake endpoints; clients send it as the `x-airlock-key` header or `?key=`
+query param. For Claude Code http hooks, append `?key=…` to each hook URL. The
+usage reporter reads it from the `AIRLOCK_HOOK_SECRET` env var.
+
 ## Limitations
 
 - Passive observation only. Airlock never blocks, approves, or denies anything; there is no enforcement in v1.
 - One level of agent hierarchy is modeled: every subagent's parent is `main`. Agent teams and nested subagents (a subagent spawning its own subagents) are not modeled.
-- The endpoint binds to loopback and has no authentication. Do not expose it on a reachable interface.
 - A Devin CLI adapter is planned. Devin CLI supports `PreToolUse`/`PostToolUse` hooks carrying `session_id`/`prompt_id`; it will emit the same normalized events.

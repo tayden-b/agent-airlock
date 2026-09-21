@@ -21,7 +21,10 @@ const SCHEMA_DDL: string[] = [
     status TEXT NOT NULL,
     started_at TEXT NOT NULL,
     ended_at TEXT,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    phase TEXT,
+    session_verdict_json TEXT,
+    usage_json TEXT
   )`,
   `CREATE INDEX IF NOT EXISTS runs_updated_at_idx ON runs (updated_at)`,
   `CREATE TABLE IF NOT EXISTS agents (
@@ -74,9 +77,23 @@ function ensureParentDir(url: string): void {
   mkdirSync(path.dirname(path.resolve(filePath)), { recursive: true });
 }
 
+/** Columns added after v1; existing databases get them via ALTER. */
+const MIGRATIONS: string[] = [
+  `ALTER TABLE runs ADD COLUMN phase TEXT`,
+  `ALTER TABLE runs ADD COLUMN session_verdict_json TEXT`,
+  `ALTER TABLE runs ADD COLUMN usage_json TEXT`,
+];
+
 async function ensureSchema(db: AirlockDb): Promise<void> {
   for (const statement of SCHEMA_DDL) {
     await db.run(sql.raw(statement));
+  }
+  for (const migration of MIGRATIONS) {
+    try {
+      await db.run(sql.raw(migration));
+    } catch {
+      // column already exists
+    }
   }
 }
 
