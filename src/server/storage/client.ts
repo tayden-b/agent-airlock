@@ -61,6 +61,10 @@ const SCHEMA_DDL: string[] = [
   )`,
   `CREATE INDEX IF NOT EXISTS actions_run_id_idx ON actions (run_id)`,
   `CREATE INDEX IF NOT EXISTS actions_run_agent_idx ON actions (run_id, agent_id)`,
+  `CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`,
 ];
 
 export type AirlockDb = LibSQLDatabase<typeof schema>;

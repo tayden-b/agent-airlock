@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunSummary, StreamEvent, Verdict } from "@/contracts";
+import type { DashboardStats } from "@/server/storage/repository";
+import { StatsOverview } from "@/components/stats-overview";
 import { useStreamEvents } from "@/lib/stream";
 import {
   PHASE_STYLES,
@@ -47,12 +49,14 @@ function VerdictMix({ verdicts }: { verdicts: RunSummary["verdicts"] }) {
 
 export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
   const [summaries, setSummaries] = useState<RunSummary[]>(initial);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/runs");
-      if (res.ok) setSummaries(await res.json());
+      const [runsRes, statsRes] = await Promise.all([fetch("/api/runs"), fetch("/api/stats")]);
+      if (runsRes.ok) setSummaries(await runsRes.json());
+      if (statsRes.ok) setStats(await statsRes.json());
     } catch {
       // transient; next tick retries
     }
@@ -78,6 +82,11 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
     return () => clearInterval(id);
   }, [refresh]);
 
+  // Initial stats pull (refresh covers it on subsequent ticks).
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
   // Empty session start/end pairs are noise; active runs stay visible even
   // before their first action lands.
   const visible = summaries.filter((s) => s.actions > 0 || s.run.status === "active");
@@ -99,6 +108,11 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
         </div>
       </header>
 
+      {stats && <StatsOverview stats={stats} />}
+
+      <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
+        recent sessions
+      </h2>
       {visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 px-6 py-16 text-center">
           <p className="text-sm text-zinc-500">No sessions observed yet.</p>
