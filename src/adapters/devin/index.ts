@@ -29,11 +29,13 @@ function asIso(value: string | number | null | undefined): string | undefined {
   return Number.isNaN(t) ? undefined : new Date(t).toISOString();
 }
 
+// "blocked" is intentionally absent: it means the session is parked awaiting
+// input, not over.
 const TERMINAL = new Set([
   "finished",
   "stopped",
   "expired",
-  "blocked",
+  "suspended",
   "suspend_requested",
   "suspend_user_requested",
 ]);
