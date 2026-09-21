@@ -1,4 +1,4 @@
-import type { SessionPhase, Usage, Verdict } from "@/contracts";
+import type { DimensionName, SessionPhase, Usage, Verdict } from "@/contracts";
 
 export const VERDICT_STYLES: Record<Verdict | "pending", { badge: string; dot: string }> = {
   allow: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-200", dot: "bg-emerald-500" },
@@ -61,6 +61,15 @@ export function riskTone(risk: number): string {
   if (risk >= 0.5) return "bg-amber-500";
   return "bg-zinc-300";
 }
+
+/** Plain-English meaning of each risk dimension — must mirror the policy
+ * reason phrases in src/server/policy/index.ts. */
+export const DIMENSION_MEANINGS: Record<DimensionName, string> = {
+  scope: "reaches beyond the task",
+  exposure: "sensitive-data exposure",
+  impact: "potential damage",
+  reversibility: "hard to undo",
+};
 
 export const PHASE_STYLES: Record<SessionPhase, string> = {
   exploring: "bg-sky-50 text-sky-700 ring-sky-200",

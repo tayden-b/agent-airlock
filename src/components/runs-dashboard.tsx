@@ -14,13 +14,33 @@ import {
 } from "@/lib/display";
 import { Badge } from "@/components/ui/badge";
 
-function VerdictPill({ verdict, count }: { verdict: Verdict | "pending"; count: number }) {
-  if (count === 0) return null;
+const VERDICT_ORDER: (Verdict | "pending")[] = ["deny", "review", "allow", "pending"];
+
+/** Compact verdict breakdown: stacked mini bar + mono counts. */
+function VerdictMix({ verdicts }: { verdicts: RunSummary["verdicts"] }) {
+  const total = verdicts.deny + verdicts.review + verdicts.allow + verdicts.pending;
+  if (total === 0) return null;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${VERDICT_STYLES[verdict].badge}`}
+      className="flex items-center gap-2"
+      title={VERDICT_ORDER.map((v) => `${verdicts[v]} ${verdictLabel(v)}`).join(" · ")}
     >
-      {count} {verdictLabel(verdict)}
+      <span className="flex h-1.5 w-16 overflow-hidden rounded-full bg-zinc-100">
+        {VERDICT_ORDER.map((v) =>
+          verdicts[v] > 0 ? (
+            <span
+              key={v}
+              className={VERDICT_STYLES[v].dot}
+              style={{ width: `${(verdicts[v] / total) * 100}%` }}
+            />
+          ) : null,
+        )}
+      </span>
+      <span className="font-mono text-[11px] text-zinc-500">
+        {VERDICT_ORDER.filter((v) => verdicts[v] > 0)
+          .map((v) => `${verdicts[v]}${verdictLabel(v)[0]}`)
+          .join(" ")}
+      </span>
     </span>
   );
 }
@@ -136,10 +156,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
                       {agents} {agents === 1 ? "agent" : "agents"} · {actions}{" "}
                       {actions === 1 ? "action" : "actions"}
                     </span>
-                    <VerdictPill verdict="deny" count={verdicts.deny} />
-                    <VerdictPill verdict="review" count={verdicts.review} />
-                    <VerdictPill verdict="allow" count={verdicts.allow} />
-                    <VerdictPill verdict="pending" count={verdicts.pending} />
+                    <VerdictMix verdicts={verdicts} />
                   </div>
                 </div>
               </Link>
