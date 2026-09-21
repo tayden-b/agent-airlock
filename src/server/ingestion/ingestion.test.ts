@@ -157,7 +157,6 @@ describe("ingestEvent edge cases", () => {
   });
 
   it("a second subscriber after replay still gets new events", async () => {
-    const db = await createTestDb();
     const seen: StreamEvent[] = [];
     subscribeStream((e) => seen.push(e));
     publishStream({ type: "heartbeat", at: "x" });
