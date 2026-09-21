@@ -51,9 +51,7 @@ export async function syncDevinSessions(): Promise<{ sessions: number; ingested:
   if (!apiKey || orgIds.length === 0) return { sessions: 0, ingested: 0 };
 
   const sessions = (
-    await Promise.all(
-      orgIds.map((orgId) => fetchSessions(apiKey, orgId).catch(() => [])),
-    )
+    await Promise.all(orgIds.map((orgId) => fetchSessions(apiKey, orgId).catch(() => [])))
   ).flat();
   let ingested = 0;
   for (const session of sessions) {
