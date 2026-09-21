@@ -5,7 +5,8 @@ import type { AirlockConfig } from "@/server/config";
  *
  * Environment overrides (see .env.example):
  *   AIRLOCK_DATABASE_URL  -> storage.url
- *   AIRLOCK_CLASSIFIER    -> classifier.providers (comma-separated, e.g. "rules,jev")
+ *   AIRLOCK_CLASSIFIER    -> classifier.providers (comma-separated, e.g. "rules")
+ *   TYPESAFE_API_KEY      -> required for the "jev" provider; without it Jev is skipped
  */
 const config: AirlockConfig = {
   policy: {
@@ -24,7 +25,7 @@ const config: AirlockConfig = {
     maxDepth: 6,
   },
   classifier: {
-    providers: ["rules"],
+    providers: ["rules", "jev"],
   },
   stream: {
     heartbeatMs: 15_000,
