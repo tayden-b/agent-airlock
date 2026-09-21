@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   ActionSchema,
   AgentSchema,
@@ -201,6 +201,33 @@ export async function getAgent(id: string, db?: AirlockDb): Promise<Agent | null
   const handle = db ?? (await getDb());
   const rows = await handle.select().from(agents).where(eq(agents.id, id)).limit(1);
   return rows[0] ? toAgent(rows[0]) : null;
+}
+
+/**
+ * Closes out every still-running agent in a run (a run can end without a
+ * SubagentStop per agent — most commonly `main`). Returns the updated agents
+ * so callers can republish them.
+ */
+export async function completeRunningAgents(
+  runId: string,
+  at: string,
+  db?: AirlockDb,
+): Promise<Agent[]> {
+  const handle = db ?? (await getDb());
+  const where = and(eq(agents.runId, runId), eq(agents.status, "running"));
+  const pending = await handle.select().from(agents).where(where);
+  if (pending.length === 0) return [];
+  const stamp = now();
+  await handle
+    .update(agents)
+    .set({ status: "completed", endedAt: at, updatedAt: stamp })
+    .where(where);
+  return pending.map((row) => ({
+    ...toAgent(row),
+    status: "completed",
+    endedAt: at,
+    updatedAt: stamp,
+  }));
 }
 
 // ---------------------------------------------------------------------------
