@@ -5,7 +5,7 @@ import { z } from "zod";
  * Everything downstream of an adapter (storage, policy, UI) speaks these types.
  */
 
-export const SourceSchema = z.enum(["claude-code", "simulator", "devin-cli"]);
+export const SourceSchema = z.enum(["claude-code", "simulator", "devin-cli", "devin"]);
 export type Source = z.infer<typeof SourceSchema>;
 
 export const ToolKindSchema = z.enum([

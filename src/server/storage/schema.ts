@@ -70,3 +70,9 @@ export const actions = sqliteTable(
     index("actions_run_agent_idx").on(t.runId, t.agentId),
   ],
 );
+
+/** Small key-value store for connector bookkeeping (last sync times, cursors). */
+export const meta = sqliteTable("meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});

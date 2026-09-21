@@ -19,7 +19,7 @@ import {
   type Usage,
 } from "@/contracts";
 import { getDb, type AirlockDb } from "./client";
-import { actions, agents, runs } from "./schema";
+import { actions, agents, meta, runs } from "./schema";
 
 /**
  * The only module that talks to the database. Everything returned is parsed
@@ -400,6 +400,21 @@ interface VerdictStatsRow {
 }
 
 /** Recent runs with aggregate stats for the runs list. */
+/** Connector bookkeeping: last-sync timestamps etc. */
+export async function getMeta(key: string, db?: AirlockDb): Promise<string | null> {
+  const handle = db ?? (await getDb());
+  const rows = await handle.select().from(meta).where(eq(meta.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+export async function setMeta(key: string, value: string, db?: AirlockDb): Promise<void> {
+  const handle = db ?? (await getDb());
+  await handle
+    .insert(meta)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: meta.key, set: { value } });
+}
+
 export async function listRunSummaries(limit = 50, db?: AirlockDb): Promise<RunSummary[]> {
   const handle = db ?? (await getDb());
   const runRows = await handle.select().from(runs).orderBy(desc(runs.updatedAt)).limit(limit);
@@ -434,4 +449,136 @@ export async function listRunSummaries(limit = 50, db?: AirlockDb): Promise<RunS
       },
     };
   });
+}
+
+/** Dashboard aggregates across all runs/sources. */
+export interface AttentionAction {
+  actionId: string;
+  runId: string;
+  runMission: string | null;
+  agentId: string;
+  toolName: string;
+  inputSummary: string;
+  verdict: "deny" | "review";
+  reason: string;
+  at: string;
+}
+
+export interface DashboardStats {
+  totals: {
+    runs: number;
+    activeRuns: number;
+    agents: number;
+    actions: number;
+    tokens: number;
+  };
+  verdicts: { allow: number; review: number; deny: number; pending: number };
+  perSource: { source: Source; runs: number; actions: number }[];
+  /** Per-day action counts for the last 14 days, oldest first. */
+  activity: { day: string; actions: number; flagged: number }[];
+  attention: AttentionAction[];
+}
+
+export async function getDashboardStats(db?: AirlockDb): Promise<DashboardStats> {
+  const handle = db ?? (await getDb());
+
+  const runTotals = await handle.all<{
+    runs: number;
+    activeRuns: number;
+    tokens: number | null;
+  }>(sql`
+    SELECT COUNT(*) AS runs,
+           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS activeRuns,
+           SUM(CAST(json_extract(usage_json, '$.totalTokens') AS INTEGER)) AS tokens
+    FROM runs
+  `);
+
+  const agentCount = await handle.all<{ n: number }>(sql`SELECT COUNT(*) AS n FROM agents`);
+
+  const actionStats = await handle.all<{
+    total: number;
+    assessed: number;
+    allow: number;
+    review: number;
+    deny: number;
+  }>(sql`
+    SELECT COUNT(*) AS total,
+           SUM(CASE WHEN assessment_json IS NOT NULL THEN 1 ELSE 0 END) AS assessed,
+           SUM(CASE WHEN json_extract(assessment_json, '$.verdict') = 'allow' THEN 1 ELSE 0 END) AS allow,
+           SUM(CASE WHEN json_extract(assessment_json, '$.verdict') = 'review' THEN 1 ELSE 0 END) AS review,
+           SUM(CASE WHEN json_extract(assessment_json, '$.verdict') = 'deny' THEN 1 ELSE 0 END) AS deny
+    FROM actions
+  `);
+
+  const perSource = await handle.all<{ source: Source; runs: number; actions: number }>(sql`
+    SELECT r.source AS source,
+           COUNT(DISTINCT r.id) AS runs,
+           COUNT(a.id) AS actions
+    FROM runs r LEFT JOIN actions a ON a.run_id = r.id
+    GROUP BY r.source
+    ORDER BY actions DESC
+  `);
+
+  const activityRows = await handle.all<{ day: string; actions: number; flagged: number }>(sql`
+    SELECT substr(proposed_at, 1, 10) AS day,
+           COUNT(*) AS actions,
+           SUM(CASE WHEN json_extract(assessment_json, '$.verdict') IN ('deny','review') THEN 1 ELSE 0 END) AS flagged
+    FROM actions
+    WHERE proposed_at >= date('now', '-14 days')
+    GROUP BY day
+    ORDER BY day
+  `);
+
+  const attentionRows = await handle.all<{
+    actionId: string;
+    runId: string;
+    mission: string | null;
+    agentId: string;
+    toolName: string;
+    inputSummary: string;
+    verdict: string;
+    reason: string;
+    at: string;
+  }>(sql`
+    SELECT a.id AS actionId, a.run_id AS runId, r.mission AS mission,
+           a.agent_id AS agentId, a.tool_name AS toolName, a.input_summary AS inputSummary,
+           json_extract(a.assessment_json, '$.verdict') AS verdict,
+           json_extract(a.assessment_json, '$.reason') AS reason,
+           a.proposed_at AS at
+    FROM actions a JOIN runs r ON r.id = a.run_id
+    WHERE json_extract(a.assessment_json, '$.verdict') IN ('deny', 'review')
+    ORDER BY a.proposed_at DESC
+    LIMIT 12
+  `);
+
+  const t = runTotals[0];
+  const s = actionStats[0];
+  return {
+    totals: {
+      runs: t?.runs ?? 0,
+      activeRuns: t?.activeRuns ?? 0,
+      agents: agentCount[0]?.n ?? 0,
+      actions: s?.total ?? 0,
+      tokens: t?.tokens ?? 0,
+    },
+    verdicts: {
+      allow: s?.allow ?? 0,
+      review: s?.review ?? 0,
+      deny: s?.deny ?? 0,
+      pending: Math.max(0, (s?.total ?? 0) - (s?.assessed ?? 0)),
+    },
+    perSource,
+    activity: activityRows,
+    attention: attentionRows.map((r) => ({
+      actionId: r.actionId,
+      runId: r.runId,
+      runMission: r.mission,
+      agentId: r.agentId,
+      toolName: r.toolName,
+      inputSummary: r.inputSummary,
+      verdict: r.verdict === "deny" ? "deny" : "review",
+      reason: r.reason ?? "",
+      at: r.at,
+    })),
+  };
 }
