@@ -47,7 +47,9 @@ export function publishStream(event: StreamEvent): void {
     try {
       subscriber(event);
     } catch {
-      s.subscribers.delete([...s.subscribers.entries()].find(([, fn]) => fn === subscriber)?.[0] ?? -1);
+      s.subscribers.delete(
+        [...s.subscribers.entries()].find(([, fn]) => fn === subscriber)?.[0] ?? -1,
+      );
     }
   }
 }

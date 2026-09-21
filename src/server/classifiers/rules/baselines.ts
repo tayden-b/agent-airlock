@@ -5,7 +5,12 @@ import type { DimensionScores, ToolKind } from "@/contracts";
  * shell and edit start higher because a single call can do a lot; mcp starts
  * moderate because we don't know the server's blast radius yet.
  */
-function score(scope: number, exposure: number, impact: number, reversibility: number): DimensionScores {
+function score(
+  scope: number,
+  exposure: number,
+  impact: number,
+  reversibility: number,
+): DimensionScores {
   return {
     scope: { risk: scope, source: "rules" },
     exposure: { risk: exposure, source: "rules" },

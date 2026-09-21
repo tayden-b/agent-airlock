@@ -28,7 +28,8 @@ export function buildContext(params: { action: Action; agent: Agent; run: Run })
     unknown
   >;
   const kind = classifyToolKind(action.toolName);
-  const command = kind === "shell" && typeof input.command === "string" ? input.command.toLowerCase() : "";
+  const command =
+    kind === "shell" && typeof input.command === "string" ? input.command.toLowerCase() : "";
   const filePathRaw = input.file_path ?? input.notebook_path ?? input.path;
   const filePath = typeof filePathRaw === "string" ? filePathRaw : null;
   return { action, agent, run, input, command, filePath, mcp: parseMcpToolName(action.toolName) };
@@ -42,17 +43,22 @@ const PIPE_TO_SHELL = /(curl|wget)[^|]*\|\s*(sudo\s+)?(bash|sh|zsh)\b/;
 const SUDO = /\bsudo\b/;
 const GIT_PUSH_FORCE = /\bgit\s+push\b[^|;&]*(--force|-f\b)/;
 const GIT_PUSH = /\bgit\s+push\b/;
-const PACKAGE_INSTALL_GLOBAL = /\b(npm|pnpm|yarn)\s+(i|install|add)\b[^|;&]*(-g|--global)\b|\bbrew\s+install\b|\bpip\d?\s+install\b/;
+const PACKAGE_INSTALL_GLOBAL =
+  /\b(npm|pnpm|yarn)\s+(i|install|add)\b[^|;&]*(-g|--global)\b|\bbrew\s+install\b|\bpip\d?\s+install\b/;
 const ENV_EXFIL = /\b(env|printenv|cat\s+.*\.env\S*)\b[^|;&]*\|\s*(curl|wget|nc|ssh)/;
 const BACKGROUND_PROCESS = /(&\s*$|\bnohup\b|\bdisown\b|\bscreen\b|\btmux\s+new)/;
 const NETWORK_TOOL = /\b(curl|wget|nc|ncat|ssh)\b/;
 const LOCAL_HOST = /(localhost|127\.0\.0\.1|0\.0\.0\.0|::1)/;
 
-const INFRA_PATH = /(\.github\/workflows\/|Dockerfile|docker-compose|\.tf$|\.tfvars$|k8s\/|kubernetes\/|helm\/)/i;
-const AGENT_INSTRUCTIONS_PATH = /(CLAUDE\.md|AGENTS\.md|\.cursorrules|\.claude\/settings.*\.json|\.claude\/hooks)/i;
-const USER_CONFIG_PATH = /(^|\/)(\.zshrc|\.bashrc|\.bash_profile|\.gitconfig|\.ssh\/config|\.profile)$/;
+const INFRA_PATH =
+  /(\.github\/workflows\/|Dockerfile|docker-compose|\.tf$|\.tfvars$|k8s\/|kubernetes\/|helm\/)/i;
+const AGENT_INSTRUCTIONS_PATH =
+  /(CLAUDE\.md|AGENTS\.md|\.cursorrules|\.claude\/settings.*\.json|\.claude\/hooks)/i;
+const USER_CONFIG_PATH =
+  /(^|\/)(\.zshrc|\.bashrc|\.bash_profile|\.gitconfig|\.ssh\/config|\.profile)$/;
 
-const MUTATING_VERB = /^(write|delete|remove|create|update|send|post|execute|run|deploy|publish|merge)/i;
+const MUTATING_VERB =
+  /^(write|delete|remove|create|update|send|post|execute|run|deploy|publish|merge)/i;
 const OUTBOUND_COMMS = /(mail|email|slack|message|notify|sms|webhook|post)/i;
 
 function isOutsideWorkspace(filePath: string | null, cwd: string | null): boolean {
@@ -144,7 +150,8 @@ export const RULES: RuleDefinition[] = [
     id: "path.sensitive_write",
     message: "Writes to a path that looks like credentials or private config",
     dimensions: { exposure: 0.5, impact: 0.3 },
-    test: (ctx) => classifyToolKind(ctx.action.toolName) === "edit" && isSensitivePath(ctx.filePath ?? ""),
+    test: (ctx) =>
+      classifyToolKind(ctx.action.toolName) === "edit" && isSensitivePath(ctx.filePath ?? ""),
   },
   {
     id: "path.outside_workspace",
@@ -202,6 +209,7 @@ export const RULES: RuleDefinition[] = [
     message: "MCP server/tool suggests it sends messages or notifications",
     dimensions: { exposure: 0.35 },
     test: (ctx) =>
-      ctx.mcp !== null && (OUTBOUND_COMMS.test(ctx.mcp.server) || OUTBOUND_COMMS.test(ctx.mcp.tool)),
+      ctx.mcp !== null &&
+      (OUTBOUND_COMMS.test(ctx.mcp.server) || OUTBOUND_COMMS.test(ctx.mcp.tool)),
   },
 ];

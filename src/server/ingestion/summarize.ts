@@ -53,7 +53,9 @@ export function summarizeToolInput(toolName: string, input: unknown): string {
       return clip(`WebSearch: ${str(obj.query) ?? ""}`);
     case "Agent":
     case "Task":
-      return clip(`${toolName}: ${str(obj.subagent_type) ?? "agent"} — ${str(obj.description) ?? str(obj.prompt) ?? ""}`);
+      return clip(
+        `${toolName}: ${str(obj.subagent_type) ?? "agent"} — ${str(obj.description) ?? str(obj.prompt) ?? ""}`,
+      );
   }
 
   const mcp = parseMcpToolName(toolName);
