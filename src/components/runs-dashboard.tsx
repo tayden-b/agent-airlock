@@ -93,27 +93,17 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
   // before their first action lands.
   const visible = summaries.filter((s) => s.actions > 0 || s.run.status === "active");
 
-  return (
-    <div className="mx-auto max-w-5xl px-6 py-10">
-      <header className="mb-10 flex items-baseline justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Airlock</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            Shadow-mode console — every agent action, scored before it lands.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
-          <span
-            className={`inline-block h-2 w-2 rounded-full ${live ? "animate-pulse bg-emerald-500" : "bg-zinc-300"}`}
-          />
-          {live ? "live" : "connecting"}
-        </div>
-      </header>
+  void live; // stream keeps the page fresh; the sidebar renders the indicator
 
+  return (
+    <div className="mx-auto max-w-5xl px-8 py-8">
       {stats && <StatsOverview stats={stats} />}
 
-      <h2 className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
-        recent sessions
+      <h2
+        id="sessions"
+        className="mb-3 text-[11px] font-medium tracking-wide text-zinc-400 uppercase"
+      >
+        sessions
       </h2>
       {visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 px-6 py-16 text-center">

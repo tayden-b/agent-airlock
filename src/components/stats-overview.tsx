@@ -117,28 +117,7 @@ export function StatsOverview({ stats }: { stats: DashboardStats }) {
         </Card>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        {/* Sources */}
-        <Card>
-          <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">sources</p>
-          <ul className="mt-3 space-y-2">
-            {stats.perSource.length === 0 ? (
-              <li className="text-xs text-zinc-400">none connected</li>
-            ) : (
-              stats.perSource.map((s) => (
-                <li key={s.source} className="flex items-center gap-3 text-xs">
-                  <span className="w-24 font-mono font-medium text-zinc-700">{s.source}</span>
-                  <span className="text-zinc-500">
-                    {s.runs} {s.runs === 1 ? "session" : "sessions"}
-                  </span>
-                  <span className="text-zinc-300">·</span>
-                  <span className="text-zinc-500">{s.actions} actions</span>
-                </li>
-              ))
-            )}
-          </ul>
-        </Card>
-
+      <div>
         {/* Attention feed */}
         <Card>
           <p className="text-[11px] font-medium tracking-wide text-zinc-400 uppercase">
