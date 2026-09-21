@@ -84,6 +84,34 @@ describe("combineProviders", () => {
     expect(combined.impact.source).toBe("combined");
   });
 
+  it("ignores a near-zero-confidence provider when a confident one exists", () => {
+    const combined = combineProviders([
+      provider({
+        provider: "rules",
+        dimensions: { scope: { risk: 0.1, source: "rules" } },
+      }),
+      provider({
+        provider: "jev",
+        dimensions: { scope: { risk: 0.63, confidence: 0, source: "jev" } },
+      }),
+    ]);
+    expect(combined.scope.risk).toBe(0.1);
+  });
+
+  it("keeps the higher confident-provider risk", () => {
+    const combined = combineProviders([
+      provider({
+        provider: "rules",
+        dimensions: { scope: { risk: 0.1, source: "rules" } },
+      }),
+      provider({
+        provider: "jev",
+        dimensions: { scope: { risk: 0.63, confidence: 0.8, source: "jev" } },
+      }),
+    ]);
+    expect(combined.scope.risk).toBe(0.63);
+  });
+
   it("breaks risk ties in favor of the earlier provider", () => {
     const combined = combineProviders([
       provider({
@@ -126,7 +154,7 @@ describe("decide", () => {
     expect(decision.verdict).toBe("deny");
     expect(decision.forcedBy).toBe("shell.pipe_to_shell");
     expect(decision.reason).toBe(
-      "Would deny: rule shell.pipe_to_shell is on the force-deny list — curl piped to sh",
+      "Would deny — curl piped to sh — force-deny rule shell.pipe_to_shell",
     );
   });
 
@@ -141,18 +169,22 @@ describe("decide", () => {
     );
     expect(decision.verdict).toBe("deny");
     expect(decision.drivingDimension).toBe("impact");
-    expect(decision.reason).toBe("Would deny: impact 0.90 ≥ 0.80 — deletes production data");
+    expect(decision.reason).toBe(
+      "Would deny — it could cause real damage (impact 0.90) — deletes production data",
+    );
   });
 
   it("denies at the deny threshold without a trailing clause when no hit supports the dimension", () => {
     const decision = decide(dimensions({ scope: score({ risk: 0.85 }) }), [], basePolicy);
-    expect(decision.reason).toBe("Would deny: scope 0.85 ≥ 0.80");
+    expect(decision.reason).toBe("Would deny — it reaches beyond the immediate task (scope 0.85)");
   });
 
   it("reviews at the review threshold", () => {
     const decision = decide(dimensions({ exposure: score({ risk: 0.65 }) }), [], basePolicy);
     expect(decision.verdict).toBe("review");
-    expect(decision.reason).toBe("Would review: exposure 0.65 ≥ 0.50");
+    expect(decision.reason).toBe(
+      "Would review — it could read or transmit sensitive data (exposure 0.65)",
+    );
   });
 
   it("reviews when the driving dimension's confidence is below minConfidenceForAllow", () => {
@@ -162,7 +194,7 @@ describe("decide", () => {
       basePolicy,
     );
     expect(decision.verdict).toBe("review");
-    expect(decision.reason).toBe("Would review: low confidence 0.40 < 0.60 on scope (risk 0.30)");
+    expect(decision.reason).toBe("Would review — too uncertain to allow (scope confidence 0.40)");
   });
 
   it("allows when risk and confidence clear every threshold", () => {
@@ -172,7 +204,7 @@ describe("decide", () => {
       basePolicy,
     );
     expect(decision.verdict).toBe("allow");
-    expect(decision.reason).toBe("Would allow: max risk 0.30 (impact) below 0.50");
+    expect(decision.reason).toBe("Would allow — low risk across all dimensions (max 0.30)");
   });
 
   it("breaks cross-dimension risk ties by DIMENSIONS order", () => {
@@ -196,7 +228,6 @@ describe("decide", () => {
   it("formats all numbers in reasons with exactly two decimals", () => {
     const decision = decide(dimensions({ impact: score({ risk: 0.9 }) }), [], basePolicy);
     expect(decision.reason).toContain("0.90");
-    expect(decision.reason).toContain("0.80");
     expect(decision.reason).not.toMatch(/(?<![\d.])0\.9(?!\d)/);
   });
 
@@ -209,7 +240,7 @@ describe("decide", () => {
     );
     expect(decision.reason.length).toBeLessThanOrEqual(200);
     expect(decision.reason.endsWith("…")).toBe(true);
-    expect(decision.reason).toContain("Would deny: impact 0.90 ≥ 0.80 — ");
+    expect(decision.reason).toContain("Would deny — it could cause real damage (impact 0.90) — ");
   });
 
   it("ignores hits that do not score the driving dimension", () => {
@@ -218,14 +249,14 @@ describe("decide", () => {
       [hit({ ruleId: "a", message: "scopes only", dimensions: { scope: 1 } })],
       basePolicy,
     );
-    expect(decision.reason).toBe("Would deny: impact 0.90 ≥ 0.80");
+    expect(decision.reason).toBe("Would deny — it could cause real damage (impact 0.90)");
   });
 
   it("respects overridden thresholds", () => {
     const strict = policyWith({ thresholds: { deny: 0.4, review: 0.2 } });
     const decision = decide(dimensions({ scope: score({ risk: 0.45 }) }), [], strict);
     expect(decision.verdict).toBe("deny");
-    expect(decision.reason).toBe("Would deny: scope 0.45 ≥ 0.40");
+    expect(decision.reason).toBe("Would deny — it reaches beyond the immediate task (scope 0.45)");
   });
 });
 
@@ -252,7 +283,7 @@ describe("buildAssessment", () => {
     expect(() => AssessmentSchema.parse(assessment)).not.toThrow();
     expect(assessment.policyVersion).toBe(basePolicy.version);
     expect(assessment.verdict).toBe("deny");
-    expect(assessment.reason).toBe("Would deny: impact 0.90 ≥ 0.80 — boom");
+    expect(assessment.reason).toBe("Would deny — it could cause real damage (impact 0.90) — boom");
   });
 
   it("dedupes rule hits by ruleId, keeping the first occurrence", () => {

@@ -18,6 +18,11 @@ export const DEFAULT_DIMENSION: DimensionScore = {
 
 const MAX_REASON_LENGTH = 200;
 
+/** Below this a provider's score is treated as a guess: excluded from the
+ * combined max whenever at least one provider is confident. Rules scores
+ * carry no confidence and are always eligible. */
+const MIN_PROVIDER_CONFIDENCE = 0.25;
+
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
@@ -44,8 +49,12 @@ export function combineProviders(assessments: ProviderAssessment[]): DimensionSc
       const only = supplied[0];
       combined[dim] = normalize(only);
     } else {
-      let winner = supplied[0];
-      for (const candidate of supplied.slice(1)) {
+      const confident = supplied.filter(
+        (d) => d.confidence === undefined || d.confidence >= MIN_PROVIDER_CONFIDENCE,
+      );
+      const eligible = confident.length > 0 ? confident : supplied;
+      let winner = eligible[0];
+      for (const candidate of eligible.slice(1)) {
         if (candidate.risk > winner.risk) winner = candidate;
       }
       combined[dim] = normalize({ ...winner, source: "combined" });
@@ -73,6 +82,14 @@ function drivingOf(dimensions: DimensionScores): { dim: DimensionName; risk: num
   }
   return { dim, risk };
 }
+
+/** Plain-English gloss for each risk dimension, used in verdict reasons. */
+const DIMENSION_PHRASES: Record<DimensionName, string> = {
+  scope: "reaches beyond the immediate task",
+  exposure: "could read or transmit sensitive data",
+  impact: "could cause real damage",
+  reversibility: "is hard to undo once it runs",
+};
 
 function strongestHit(ruleHits: RuleHit[], dim: DimensionName): RuleHit | undefined {
   let best: RuleHit | undefined;
@@ -106,7 +123,7 @@ export function decide(
     if (policy.forceDenyRules.includes(hit.ruleId)) {
       return {
         verdict: "deny",
-        reason: appendWhy(`Would deny: rule ${hit.ruleId} is on the force-deny list`, hit.message),
+        reason: appendWhy(`Would deny — ${hit.message}`, `force-deny rule ${hit.ruleId}`),
         maxRisk,
         drivingDimension: dim,
         forcedBy: hit.ruleId,
@@ -117,7 +134,7 @@ export function decide(
   const why = strongestHit(ruleHits, dim)?.message;
 
   if (maxRisk >= policy.thresholds.deny) {
-    const base = `Would deny: ${dim} ${fmt(maxRisk)} ≥ ${fmt(policy.thresholds.deny)}`;
+    const base = `Would deny — it ${DIMENSION_PHRASES[dim]} (${dim} ${fmt(maxRisk)})`;
     return {
       verdict: "deny",
       reason: why ? appendWhy(base, why) : base,
@@ -127,7 +144,7 @@ export function decide(
   }
 
   if (maxRisk >= policy.thresholds.review) {
-    const base = `Would review: ${dim} ${fmt(maxRisk)} ≥ ${fmt(policy.thresholds.review)}`;
+    const base = `Would review — it ${DIMENSION_PHRASES[dim]} (${dim} ${fmt(maxRisk)})`;
     return {
       verdict: "review",
       reason: why ? appendWhy(base, why) : base,
@@ -140,9 +157,7 @@ export function decide(
   if (confidence !== undefined && confidence < policy.minConfidenceForAllow) {
     return {
       verdict: "review",
-      reason: `Would review: low confidence ${fmt(confidence)} < ${fmt(
-        policy.minConfidenceForAllow,
-      )} on ${dim} (risk ${fmt(maxRisk)})`,
+      reason: `Would review — too uncertain to allow (${dim} confidence ${fmt(confidence)})`,
       maxRisk,
       drivingDimension: dim,
     };
@@ -150,7 +165,7 @@ export function decide(
 
   return {
     verdict: "allow",
-    reason: `Would allow: max risk ${fmt(maxRisk)} (${dim}) below ${fmt(policy.thresholds.review)}`,
+    reason: `Would allow — low risk across all dimensions (max ${fmt(maxRisk)})`,
     maxRisk,
     drivingDimension: dim,
   };
