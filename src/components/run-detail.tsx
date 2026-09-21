@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DIMENSIONS,
   type Action,
@@ -157,6 +157,20 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
   }, []);
 
   const live = useStreamEvents(onEvent);
+
+  // Slow poll as a safety net: on serverless deployments the event may be
+  // published on a different instance than the one holding this SSE stream.
+  useEffect(() => {
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/runs/${encodeURIComponent(snapshot.run.id)}`);
+        if (res.ok) setSnapshot(await res.json());
+      } catch {
+        // transient; next tick retries
+      }
+    }, 5000);
+    return () => clearInterval(id);
+  }, [snapshot.run.id]);
 
   const agentLabel = useMemo(() => {
     const map = new Map(snapshot.agents.map((a) => [a.id, a]));

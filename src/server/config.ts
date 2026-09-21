@@ -47,8 +47,10 @@ export const AirlockConfigSchema = z.object({
     heartbeatMs: z.number().int().positive(),
   }),
   storage: z.object({
-    /** libsql URL, e.g. file:./data/airlock.db */
+    /** libsql URL, e.g. file:./data/airlock.db or libsql://…turso.io */
     url: z.string().min(1),
+    /** Auth token for remote libsql endpoints (e.g. Turso). */
+    authToken: z.string().optional(),
   }),
 });
 export type AirlockConfig = z.infer<typeof AirlockConfigSchema>;
@@ -56,6 +58,7 @@ export type AirlockConfig = z.infer<typeof AirlockConfigSchema>;
 function applyEnvOverrides(config: AirlockConfig, env: NodeJS.ProcessEnv): AirlockConfig {
   const next: AirlockConfig = structuredClone(config);
   if (env.AIRLOCK_DATABASE_URL) next.storage.url = env.AIRLOCK_DATABASE_URL;
+  if (env.AIRLOCK_DATABASE_AUTH_TOKEN) next.storage.authToken = env.AIRLOCK_DATABASE_AUTH_TOKEN;
   if (env.AIRLOCK_CLASSIFIER) {
     const providers = env.AIRLOCK_CLASSIFIER.split(",")
       .map((p) => p.trim())

@@ -84,9 +84,9 @@ async function ensureSchema(db: AirlockDb): Promise<void> {
 export async function getDb(): Promise<AirlockDb> {
   const g = globalThis as StorageGlobal;
   if (!g.__airlockDb) {
-    const url = getConfig().storage.url;
+    const { url, authToken } = getConfig().storage;
     ensureParentDir(url);
-    const db = drizzle(createClient({ url }), { schema });
+    const db = drizzle(createClient({ url, authToken }), { schema });
     await ensureSchema(db);
     g.__airlockDb = db;
   }
