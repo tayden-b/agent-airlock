@@ -186,6 +186,22 @@ describe("normalizeClaudeCodeEvent fixtures", () => {
     );
   });
 
+  it("subagent-stop with empty agent_type falls back to unknown", () => {
+    const result = normalizeClaudeCodeEvent(
+      {
+        ...(loadFixture("subagent-stop.json") as Record<string, unknown>),
+        agent_type: "",
+      },
+      options,
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.events[0]).toMatchObject({
+      kind: "agent.stopped",
+      agentId: "agt_3b91e2",
+      agentType: "unknown",
+    });
+  });
+
   it("session-end emits run.ended with the reason", () => {
     const events = normalizeFixture("session-end.json");
     expect(events).toHaveLength(1);

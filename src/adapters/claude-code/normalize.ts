@@ -107,7 +107,9 @@ export function normalizeClaudeCodeEvent(
       ...(event.cwd !== undefined ? { cwd: event.cwd } : {}),
     };
     const agentId = event.agent_id ?? MAIN_AGENT_ID;
-    const agentType = event.agent_type ?? MAIN_AGENT_ID;
+    // agent_type may be absent or empty (e.g. SubagentStop on Claude Code
+    // 2.x); fall back to "unknown" for subagents and "main" for the thread.
+    const agentType = event.agent_type || (event.agent_id ? "unknown" : MAIN_AGENT_ID);
 
     switch (event.hook_event_name) {
       case "SessionStart":

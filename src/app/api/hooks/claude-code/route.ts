@@ -19,7 +19,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const result = normalizeClaudeCodeEvent(raw, { receivedAt: new Date().toISOString() });
   if (result.error) {
-    console.warn(`[airlock] dropped hook payload: ${result.error}`);
+    console.warn(
+      `[airlock] dropped hook payload: ${result.error} :: ${JSON.stringify(raw).slice(0, 500)}`,
+    );
     return Response.json({});
   }
 
