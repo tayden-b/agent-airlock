@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunSummary, StreamEvent, Verdict } from "@/contracts";
 import { useStreamEvents } from "@/lib/stream";
 import { VERDICT_STYLES, formatRelative, verdictLabel } from "@/lib/display";
@@ -22,22 +22,34 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
   const [summaries, setSummaries] = useState<RunSummary[]>(initial);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Re-pull the summary list on any event; debounced so a burst of tool
-  // calls coalesces into one read of (tiny, local) sqlite.
-  const onEvent = useCallback((event: StreamEvent) => {
-    if (event.type === "heartbeat") return;
-    if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    refreshTimer.current = setTimeout(async () => {
-      try {
-        const res = await fetch("/api/runs");
-        if (res.ok) setSummaries(await res.json());
-      } catch {
-        // transient; next event retries
-      }
-    }, 200);
+  const refresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/runs");
+      if (res.ok) setSummaries(await res.json());
+    } catch {
+      // transient; next tick retries
+    }
   }, []);
 
+  // Re-pull the summary list on any event; debounced so a burst of tool
+  // calls coalesces into one read of (tiny, local) sqlite.
+  const onEvent = useCallback(
+    (event: StreamEvent) => {
+      if (event.type === "heartbeat") return;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(refresh, 200);
+    },
+    [refresh]
+  );
+
   const live = useStreamEvents(onEvent);
+
+  // Slow poll as a safety net: on serverless deployments the event may be
+  // published on a different instance than the one holding this SSE stream.
+  useEffect(() => {
+    const id = setInterval(refresh, 5000);
+    return () => clearInterval(id);
+  }, [refresh]);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
