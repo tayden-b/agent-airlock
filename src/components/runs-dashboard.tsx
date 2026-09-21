@@ -7,6 +7,7 @@ import { useStreamEvents } from "@/lib/stream";
 import {
   PHASE_STYLES,
   VERDICT_STYLES,
+  cleanLabel,
   formatRelative,
   formatTokens,
   verdictLabel,
@@ -110,7 +111,7 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
                       <span className="text-xs text-zinc-400">{formatRelative(run.updatedAt)}</span>
                     </div>
                     <p className="mt-1.5 truncate text-sm font-medium text-zinc-800">
-                      {run.mission ?? run.sessionId}
+                      {run.mission ? cleanLabel(run.mission) : run.sessionId}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

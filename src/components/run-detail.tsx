@@ -14,6 +14,7 @@ import { useStreamEvents } from "@/lib/stream";
 import {
   PHASE_STYLES,
   VERDICT_STYLES,
+  cleanLabel,
   formatTime,
   formatTokens,
   riskTone,
@@ -205,8 +206,8 @@ export function RunDetail({ initial }: { initial: RunSnapshot }) {
       <header className="mt-4 mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold tracking-tight text-zinc-900">
-              {run.mission ?? run.sessionId}
+            <h1 className="max-w-2xl truncate text-base font-medium text-zinc-900">
+              {run.mission ? cleanLabel(run.mission) : run.sessionId}
             </h1>
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ${
@@ -300,7 +301,7 @@ function AgentSection({ agent, actions }: { agent: Agent; actions: Action[] }) {
         <span className="font-mono text-xs font-medium text-zinc-700">{agent.agentId}</span>
         <span className="text-[11px] tracking-wide text-zinc-400 uppercase">{agent.agentType}</span>
         <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
-          {agent.description ?? agent.mission ?? ""}
+          {agent.description ?? (agent.mission ? cleanLabel(agent.mission) : "")}
         </span>
         <span className="text-[11px] text-zinc-400">
           {actions.length} {actions.length === 1 ? "action" : "actions"} · {agent.status}

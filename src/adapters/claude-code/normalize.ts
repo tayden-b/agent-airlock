@@ -48,6 +48,20 @@ export function synthesizeToolUseId(agentId: string, toolName: string, toolInput
   return `synth-${fnv1a(`${agentId}\u0000${toolName}\u0000${stableStringify(toolInput)}`)}`;
 }
 
+/** Claude Code injects system envelopes (background-task notices, reminders,
+ * command echoes) as prompt-shaped text. They are not user missions. */
+const SYNTHETIC_PROMPT =
+  /^\s*<(?:task-notification|system-reminder|command-name|command-args|command-message|local-command-stdout|local-command-stderr|bash-input|bash-output|ide-opened-file|ide-selection)\b/;
+
+const MISSION_MAX = 200;
+
+function cleanMission(prompt: string): string | undefined {
+  if (SYNTHETIC_PROMPT.test(prompt)) return undefined;
+  const flat = prompt.replace(/\s+/g, " ").trim();
+  if (!flat) return undefined;
+  return flat.length > MISSION_MAX ? `${flat.slice(0, MISSION_MAX).trimEnd()}…` : flat;
+}
+
 function firstIssueMessage(error: { issues: { path: PropertyKey[]; message: string }[] }): string {
   const issue = error.issues[0];
   if (!issue) return "unknown issue";
@@ -124,13 +138,21 @@ export function normalizeClaudeCodeEvent(
             },
           ],
         };
-      case "UserPromptSubmit":
+      case "UserPromptSubmit": {
+        const mission = cleanMission(event.prompt);
+        if (mission === undefined) {
+          return {
+            events: [],
+            ignored: { hookEventName: "UserPromptSubmit", reason: "synthetic envelope" },
+          };
+        }
         if (event.agent_id === undefined) {
-          return { events: [{ ...base, kind: "run.mission", mission: event.prompt }] };
+          return { events: [{ ...base, kind: "run.mission", mission }] };
         }
         return {
-          events: [{ ...base, kind: "agent.mission", agentId, agentType, mission: event.prompt }],
+          events: [{ ...base, kind: "agent.mission", agentId, agentType, mission }],
         };
+      }
       case "SubagentStart":
         return {
           events: [
@@ -187,7 +209,9 @@ export function normalizeClaudeCodeEvent(
                 ? { agentType: input.data.subagent_type }
                 : {}),
               parentAgentId: agentId,
-              ...(input.data.prompt !== undefined ? { mission: input.data.prompt } : {}),
+              ...(input.data.prompt !== undefined
+                ? { mission: cleanMission(input.data.prompt) }
+                : {}),
               ...(input.data.description !== undefined
                 ? { description: input.data.description }
                 : {}),

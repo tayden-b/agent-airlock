@@ -20,6 +20,21 @@ export function verdictLabel(verdict: Verdict | "pending"): string {
   }
 }
 
+/** Strip markup envelopes and entities from hook-provided text (missions,
+ * previews) so synthetic XML blobs render as plain labels. */
+export function cleanLabel(text: string): string {
+  return text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, {
     hour: "2-digit",
