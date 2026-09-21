@@ -28,7 +28,9 @@ describe("redactString — patterns", () => {
   });
 
   it("redacts GitHub tokens (ghp_ and github_pat_)", () => {
-    const r = redactString("ghp_aBcDeFgHiJkLmNoPqRsT1234 github_pat_11ABCDEFG0_aBcDeFgHiJkLmNoPqRs");
+    const r = redactString(
+      "ghp_aBcDeFgHiJkLmNoPqRsT1234 github_pat_11ABCDEFG0_aBcDeFgHiJkLmNoPqRs",
+    );
     expect(r.redactedCount).toBe(2);
     expect(r.kinds).toEqual(["github_token"]);
     expect(r.value).not.toContain("ghp_");
@@ -111,7 +113,9 @@ describe("redactString — patterns", () => {
   });
 
   it("records kinds in order of first occurrence across mixed text", () => {
-    const r = redactString("xoxb-123456789012-abcdefghijkl then AKIAIOSFODNN7EXAMPLE then xoxp-123456789012-abcdefghij");
+    const r = redactString(
+      "xoxb-123456789012-abcdefghijkl then AKIAIOSFODNN7EXAMPLE then xoxp-123456789012-abcdefghij",
+    );
     expect(r.kinds).toEqual(["slack_token", "aws_access_key"]);
     expect(r.redactedCount).toBe(3);
   });
@@ -171,8 +175,14 @@ describe("redactValue", () => {
     expect(r.truncated).toBe(true);
     const v = r.value as Record<string, unknown>;
     // root is depth 0, so the l6 object sits at depth 6 == maxDepth and is replaced whole
-    const l5 = ((((v.l1 as Record<string, unknown>).l2 as Record<string, unknown>).l3 as Record<string, unknown>)
-      .l4 as Record<string, unknown>).l5 as Record<string, unknown>;
+    const l5 = (
+      (
+        ((v.l1 as Record<string, unknown>).l2 as Record<string, unknown>).l3 as Record<
+          string,
+          unknown
+        >
+      ).l4 as Record<string, unknown>
+    ).l5 as Record<string, unknown>;
     expect(l5.l6).toBe("[truncated: depth]");
   });
 
@@ -204,7 +214,9 @@ describe("redactValue", () => {
 
 describe("previewValue", () => {
   it("returns the string itself, redacted", () => {
-    expect(previewValue("key is AKIAIOSFODNN7EXAMPLE ok")).toBe("key is [REDACTED:aws_access_key] ok");
+    expect(previewValue("key is AKIAIOSFODNN7EXAMPLE ok")).toBe(
+      "key is [REDACTED:aws_access_key] ok",
+    );
   });
 
   it("JSON-encodes objects as a single line", () => {

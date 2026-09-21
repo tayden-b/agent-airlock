@@ -15,10 +15,7 @@ export const REDACTED_PREFIX = "[REDACTED";
 
 const placeholder = (kind: string): string => `${REDACTED_PREFIX}:${kind}]`;
 
-const wholeMatch =
-  (kind: string) =>
-  (): string =>
-    placeholder(kind);
+const wholeMatch = (kind: string) => (): string => placeholder(kind);
 
 const SECRET_KEY_NAMES =
   "password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|client[_-]?secret|auth";

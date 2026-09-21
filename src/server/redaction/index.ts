@@ -70,12 +70,23 @@ function truncateString(text: string, max: number, counters: Counters): string {
   return `${text.slice(0, max)}…[truncated ${removed} chars]`;
 }
 
-function walk(value: unknown, config: RedactionConfig, counters: Counters, depth: number, seen: Set<object>): unknown {
+function walk(
+  value: unknown,
+  config: RedactionConfig,
+  counters: Counters,
+  depth: number,
+  seen: Set<object>,
+): unknown {
   if (typeof value === "string") {
     const scrubbed = scrubString(value, counters);
     return truncateString(scrubbed, config.maxStringLength, counters);
   }
-  if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean") {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
     return value;
   }
   if (typeof value !== "object") {
@@ -93,7 +104,9 @@ function walk(value: unknown, config: RedactionConfig, counters: Counters, depth
   }
   seen.add(value);
   if (Array.isArray(value)) {
-    const kept = value.slice(0, config.maxArrayLength).map((item) => walk(item, config, counters, depth + 1, seen));
+    const kept = value
+      .slice(0, config.maxArrayLength)
+      .map((item) => walk(item, config, counters, depth + 1, seen));
     if (value.length > config.maxArrayLength) {
       counters.truncated = true;
       kept.push(`…[truncated ${value.length - config.maxArrayLength} items]`);
@@ -107,14 +120,20 @@ function walk(value: unknown, config: RedactionConfig, counters: Counters, depth
   return out;
 }
 
-export function redactString(text: string, config?: Partial<RedactionConfig>): RedactionResult<string> {
+export function redactString(
+  text: string,
+  config?: Partial<RedactionConfig>,
+): RedactionResult<string> {
   const resolved = resolveConfig(config);
   const counters = emptyCounters();
   const value = truncateString(scrubString(text, counters), resolved.maxStringLength, counters);
   return { value, ...counters };
 }
 
-export function redactValue(value: unknown, config?: Partial<RedactionConfig>): RedactionResult<unknown> {
+export function redactValue(
+  value: unknown,
+  config?: Partial<RedactionConfig>,
+): RedactionResult<unknown> {
   const resolved = resolveConfig(config);
   const counters = emptyCounters();
   try {
@@ -122,7 +141,10 @@ export function redactValue(value: unknown, config?: Partial<RedactionConfig>): 
     return { value: walked, ...counters };
   } catch {
     // redaction must never throw; fall back to a bounded string
-    return { value: truncateString(String(value), resolved.maxStringLength, counters), ...counters };
+    return {
+      value: truncateString(String(value), resolved.maxStringLength, counters),
+      ...counters,
+    };
   }
 }
 

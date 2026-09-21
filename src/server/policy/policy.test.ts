@@ -4,12 +4,7 @@ import type { DimensionName, DimensionScore, DimensionScores, RuleHit } from "@/
 import { buildConfig } from "@/server/config";
 import type { PolicyConfig } from "@/server/config";
 import type { ProviderAssessment } from "@/server/classifiers/types";
-import {
-  DEFAULT_DIMENSION,
-  buildAssessment,
-  combineProviders,
-  decide,
-} from "./index";
+import { DEFAULT_DIMENSION, buildAssessment, combineProviders, decide } from "./index";
 
 const basePolicy = buildConfig().policy;
 
@@ -167,9 +162,7 @@ describe("decide", () => {
       basePolicy,
     );
     expect(decision.verdict).toBe("review");
-    expect(decision.reason).toBe(
-      "Would review: low confidence 0.40 < 0.60 on scope (risk 0.30)",
-    );
+    expect(decision.reason).toBe("Would review: low confidence 0.40 < 0.60 on scope (risk 0.30)");
   });
 
   it("allows when risk and confidence clear every threshold", () => {

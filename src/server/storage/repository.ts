@@ -208,10 +208,7 @@ export async function getAgent(id: string, db?: AirlockDb): Promise<Agent | null
 // ---------------------------------------------------------------------------
 
 /** Inserts a freshly proposed action; a no-op if the row already exists. */
-export async function insertActionIfAbsent(
-  action: Action,
-  db?: AirlockDb,
-): Promise<void> {
+export async function insertActionIfAbsent(action: Action, db?: AirlockDb): Promise<void> {
   const handle = db ?? (await getDb());
   await handle
     .insert(actions)
@@ -329,11 +326,7 @@ interface VerdictStatsRow {
 /** Recent runs with aggregate stats for the runs list. */
 export async function listRunSummaries(limit = 50, db?: AirlockDb): Promise<RunSummary[]> {
   const handle = db ?? (await getDb());
-  const runRows = await handle
-    .select()
-    .from(runs)
-    .orderBy(desc(runs.updatedAt))
-    .limit(limit);
+  const runRows = await handle.select().from(runs).orderBy(desc(runs.updatedAt)).limit(limit);
 
   const stats = await handle.all<VerdictStatsRow>(sql`
     SELECT

@@ -44,11 +44,7 @@ function fnv1a(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-export function synthesizeToolUseId(
-  agentId: string,
-  toolName: string,
-  toolInput: unknown,
-): string {
+export function synthesizeToolUseId(agentId: string, toolName: string, toolInput: unknown): string {
   return `synth-${fnv1a(`${agentId}\u0000${toolName}\u0000${stableStringify(toolInput)}`)}`;
 }
 
@@ -63,8 +59,7 @@ function toolFields(event: ClaudeToolEvent, agentId: string, agentType: string) 
   return {
     agentId,
     agentType,
-    toolUseId:
-      event.tool_use_id ?? synthesizeToolUseId(agentId, event.tool_name, event.tool_input),
+    toolUseId: event.tool_use_id ?? synthesizeToolUseId(agentId, event.tool_name, event.tool_input),
     toolName: event.tool_name,
     // z.unknown() makes toolInput a required key on the normalized action events,
     // even though the value itself may be undefined.
@@ -73,9 +68,7 @@ function toolFields(event: ClaudeToolEvent, agentId: string, agentType: string) 
       ? {
           mcpServer: {
             name: event.mcp_server.name,
-            ...(event.mcp_server.source !== undefined
-              ? { source: event.mcp_server.source }
-              : {}),
+            ...(event.mcp_server.source !== undefined ? { source: event.mcp_server.source } : {}),
           },
         }
       : {}),

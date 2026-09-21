@@ -19,14 +19,65 @@ Add the following to `.claude/settings.json` (project-scoped) or `~/.claude/sett
 ```json
 {
   "hooks": {
-    "SessionStart": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "SubagentStart": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "SubagentStop": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "PreToolUse": [{ "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "PostToolUseFailure": [{ "matcher": "*", "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }],
-    "SessionEnd": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }] }]
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          { "type": "http", "url": "http://127.0.0.1:3000/api/hooks/claude-code", "timeout": 5 }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -40,18 +91,18 @@ Notes:
 
 Each raw hook payload is normalized into zero or more internal events (`src/adapters/claude-code/normalize.ts`):
 
-| Hook event | Normalized event(s) | Effect |
-|---|---|---|
-| `SessionStart` | `run.started` | Upsert run (status active) |
-| `UserPromptSubmit` (main thread) | `run.mission` | Attach the mission text to the run |
-| `UserPromptSubmit` (inside subagent) | `agent.mission` | Upsert the agent with its mission |
-| `SubagentStart` | `agent.started` | Upsert agent (running), parented to `main` |
-| `SubagentStop` | `agent.stopped` | Mark agent completed; keep last message preview |
-| `PreToolUse` | `action.proposed` | Upsert action |
-| `PostToolUse` | `action.completed`; plus `agent.mission` when the tool is `Agent`/`Task` and the response carries an `agentId` | Mark action succeeded; link the spawned subagent to its mission |
-| `PostToolUseFailure` | `action.failed` | Mark action failed with the error |
-| `SessionEnd` | `run.ended` | Mark run ended with the reason |
-| Anything else (e.g. `Notification`) | none | Ignored; endpoint still acks `200` |
+| Hook event                           | Normalized event(s)                                                                                            | Effect                                                          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `SessionStart`                       | `run.started`                                                                                                  | Upsert run (status active)                                      |
+| `UserPromptSubmit` (main thread)     | `run.mission`                                                                                                  | Attach the mission text to the run                              |
+| `UserPromptSubmit` (inside subagent) | `agent.mission`                                                                                                | Upsert the agent with its mission                               |
+| `SubagentStart`                      | `agent.started`                                                                                                | Upsert agent (running), parented to `main`                      |
+| `SubagentStop`                       | `agent.stopped`                                                                                                | Mark agent completed; keep last message preview                 |
+| `PreToolUse`                         | `action.proposed`                                                                                              | Upsert action                                                   |
+| `PostToolUse`                        | `action.completed`; plus `agent.mission` when the tool is `Agent`/`Task` and the response carries an `agentId` | Mark action succeeded; link the spawned subagent to its mission |
+| `PostToolUseFailure`                 | `action.failed`                                                                                                | Mark action failed with the error                               |
+| `SessionEnd`                         | `run.ended`                                                                                                    | Mark run ended with the reason                                  |
+| Anything else (e.g. `Notification`)  | none                                                                                                           | Ignored; endpoint still acks `200`                              |
 
 Payloads that fail schema validation are dropped with an error logged server-side; the hook still gets a `200`.
 
