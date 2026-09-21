@@ -3,7 +3,11 @@
 Local-first shadow-mode safety console for multi-agent coding sessions (Claude Code now, Devin CLI later).
 Hook events → redact → classify risk → deterministic shadow policy → live dashboard.
 
-## Current stage: foundation scaffolded, ingestion/routes/UI not yet wired
+## Current stage: v1 complete — full pipeline wired end-to-end
+
+All five planned PRs are done (stacked, bottom-up): rules classifier, Jev
+provider, ingestion + API + replay, live dashboard, docs + CI. `pnpm dev` plus
+`pnpm replay fixtures/sessions/research-fanout.jsonl` exercises the whole path.
 
 ### Done (verified, in `src/`)
 
