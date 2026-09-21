@@ -15,6 +15,7 @@ import { previewValue, redactValue } from "@/server/redaction";
 import {
   attachAssessment,
   completeAction,
+  completeRunningAgents,
   ensureAgent,
   ensureRun,
   getAction,
@@ -178,6 +179,9 @@ export async function ingestEvent(
         db,
       });
       publishStream({ type: "run.upserted", run });
+      for (const agent of await completeRunningAgents(runId, event.at, db)) {
+        publishStream({ type: "agent.upserted", agent });
+      }
       return;
     }
 

@@ -56,6 +56,11 @@ describe("ingestEvent over research-fanout.jsonl", () => {
       expect(agent.mission).toBeTruthy();
       expect(agent.status).toBe("completed");
     }
+    // SessionEnd has no SubagentStop for the main thread, but it must not
+    // stay "running" once its run has ended.
+    const main = snapshot!.agents.find((a) => a.agentId === "main")!;
+    expect(main.status).toBe("completed");
+    expect(main.endedAt).not.toBeNull();
 
     expect(snapshot!.actions).toHaveLength(15);
     for (const action of snapshot!.actions) {

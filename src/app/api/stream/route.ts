@@ -24,6 +24,13 @@ export async function GET(request: Request): Promise<Response> {
         }
       };
       const unsubscribe = subscribeStream(send);
+      // Flush headers immediately so EventSource fires onopen now instead of
+      // waiting for the first heartbeat.
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ type: "heartbeat", at: new Date().toISOString() })}\n\n`,
+        ),
+      );
       const heartbeat = setInterval(() => {
         send({ type: "heartbeat", at: new Date().toISOString() });
       }, heartbeatMs);
