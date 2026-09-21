@@ -82,9 +82,11 @@ export function RunsDashboard({ initial }: { initial: RunSummary[] }) {
     return () => clearInterval(id);
   }, [refresh]);
 
-  // Initial stats pull (refresh covers it on subsequent ticks).
+  // Initial stats pull; deferred via setTimeout so it isn't a synchronous
+  // setState in the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
-    void refresh();
+    const id = setTimeout(refresh, 0);
+    return () => clearTimeout(id);
   }, [refresh]);
 
   // Empty session start/end pairs are noise; active runs stay visible even
