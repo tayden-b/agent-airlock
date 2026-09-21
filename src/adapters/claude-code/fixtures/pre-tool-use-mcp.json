@@ -1,0 +1,18 @@
+{
+  "session_id": "sess_7f3a9c",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "mcp__github__create_issue",
+  "tool_input": {
+    "repo": "acme/web",
+    "title": "Token refresh race in auth middleware",
+    "body": "Concurrent requests can trigger overlapping refresh calls. See src/auth/middleware.ts."
+  },
+  "tool_use_id": "toolu_01HQ4Z3K5L7M9N1P3Q5R7S9T1V",
+  "mcp_server": {
+    "name": "github",
+    "source": "user"
+  }
+}

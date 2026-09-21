@@ -1,0 +1,11 @@
+{
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "pnpm test"
+  },
+  "tool_use_id": "toolu_01HQ53R7S8T9U0V1W2X3Y4Z5A6"
+}

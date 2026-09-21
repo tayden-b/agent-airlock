@@ -1,0 +1,12 @@
+{
+  "session_id": "sess_7f3a9c",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "SubagentStop",
+  "agent_id": "agt_3b91e2",
+  "agent_type": "Explore",
+  "agent_transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c/subagents/agt_3b91e2.jsonl",
+  "last_assistant_message": "Found the token refresh logic in src/auth/middleware.ts: it refreshes on 401 without a lock, so concurrent requests race.",
+  "stop_hook_active": false
+}

@@ -1,0 +1,22 @@
+{
+  "session_id": "sess_7f3a9c",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Explore auth middleware",
+    "prompt": "Trace the token refresh flow in /Users/dev/acme/src/auth/middleware.ts. Report where refresh is triggered, how the new token is stored, and any race conditions. Do not modify files.",
+    "subagent_type": "Explore",
+    "run_in_background": true
+  },
+  "tool_use_id": "toolu_01HQ50V2W4X6Y8Z0A2B4C6D8E0",
+  "tool_response": {
+    "status": "async_launched",
+    "agentId": "agt_3b91e2",
+    "description": "Explore auth middleware",
+    "prompt": "Trace the token refresh flow in /Users/dev/acme/src/auth/middleware.ts. Report where refresh is triggered, how the new token is stored, and any race conditions. Do not modify files.",
+    "outputFile": "/Users/dev/.claude/projects/-Users-dev-acme/tasks/agt_3b91e2.output"
+  }
+}

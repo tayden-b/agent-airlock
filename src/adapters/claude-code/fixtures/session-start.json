@@ -1,0 +1,9 @@
+{
+  "session_id": "sess_7f3a9c",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "SessionStart",
+  "source": "startup",
+  "model": "claude-opus-4-1"
+}

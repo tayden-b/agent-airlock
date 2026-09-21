@@ -1,0 +1,15 @@
+{
+  "session_id": "sess_7f3a9c",
+  "transcript_path": "/Users/dev/.claude/projects/-Users-dev-acme/sess_7f3a9c.jsonl",
+  "cwd": "/Users/dev/acme",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "pnpm build",
+    "description": "Build the production bundle"
+  },
+  "tool_use_id": "toolu_01HQ52F7G8H9J0K1L2M3N4P5Q6",
+  "error": "Exit code 1: Failed to compile.\n./src/billing/webhook.ts:42:7 - error TS2322",
+  "is_interrupt": false
+}
