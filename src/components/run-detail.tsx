@@ -357,7 +357,7 @@ function AgentSection({ agent, actions }: { agent: Agent; actions: Action[] }) {
   const agentTally = { allow: 0, review: 0, deny: 0 };
   for (const a of actions) {
     const v = a.assessment?.verdict;
-    if (v && v !== "pending") agentTally[v] += 1;
+    if (v !== undefined) agentTally[v] += 1;
   }
   return (
     <section className="mb-6">
