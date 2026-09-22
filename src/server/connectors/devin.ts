@@ -16,7 +16,15 @@ const MIN_INTERVAL_MS = 60_000;
 const API_BASE = "https://api.devin.ai";
 
 export function devinConfigured(): boolean {
-  return Boolean(process.env.DEVIN_API_KEY && process.env.DEVIN_ORG_ID);
+  return Boolean(process.env.DEVIN_API_KEY && devinOrgIds().length > 0);
+}
+
+/** DEVIN_ORG_ID accepts a comma-separated list of orgs to sync. */
+function devinOrgIds(): string[] {
+  return (process.env.DEVIN_ORG_ID ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 interface SyncGlobal {
@@ -39,10 +47,12 @@ function sessionsOf(body: unknown): unknown[] {
 
 export async function syncDevinSessions(): Promise<{ sessions: number; ingested: number }> {
   const apiKey = process.env.DEVIN_API_KEY;
-  const orgId = process.env.DEVIN_ORG_ID;
-  if (!apiKey || !orgId) return { sessions: 0, ingested: 0 };
+  const orgIds = devinOrgIds();
+  if (!apiKey || orgIds.length === 0) return { sessions: 0, ingested: 0 };
 
-  const sessions = await fetchSessions(apiKey, orgId);
+  const sessions = (
+    await Promise.all(orgIds.map((orgId) => fetchSessions(apiKey, orgId).catch(() => [])))
+  ).flat();
   let ingested = 0;
   for (const session of sessions) {
     for (const event of devinSessionToEvents(session)) {
