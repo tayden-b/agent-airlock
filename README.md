@@ -8,6 +8,8 @@ shows a live console of what each agent is doing — labeled `allow`, `review`, 
 `deny`. In v1 nothing is ever blocked: verdicts show what a policy _would_ have
 done, so it can be tuned against real traffic.
 
+![Airlock demo — dashboard overview, session drill-down, and a deny action's risk breakdown](docs/demo.gif)
+
 ## Quickstart
 
 Requires Node ≥ 20.19 (see `.nvmrc`) and pnpm.
