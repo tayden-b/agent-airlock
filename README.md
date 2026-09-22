@@ -3,12 +3,35 @@
 Shadow-mode safety console for multi-agent coding sessions.
 
 Airlock watches Claude Code sessions through their HTTP hooks, redacts secrets,
-scores every tool action's risk (scope / exposure / impact / reversibility), and
-shows a live console of what each agent is doing — labeled `allow`, `review`, or
-`deny`. In v1 nothing is ever blocked: verdicts show what a policy _would_ have
-done, so it can be tuned against real traffic.
+judges every tool action's risk, and shows a live console of what each agent is
+doing — labeled `allow`, `review`, or `deny`. In v1 nothing is ever blocked:
+verdicts show what a policy _would_ have done, so it can be tuned against real
+traffic.
 
 ![Airlock demo — dashboard overview, session drill-down, and a deny action's risk breakdown](docs/demo.gif)
+
+## Why Jev
+
+Rules can pattern-match `curl | sh` or a `.env` path — but agents are defined by
+intent, not strings. A `git push` is routine in one mission and catastrophic in
+another. Pattern matching can't tell the difference.
+
+That's where [TypeSafe Jev](https://docs.typesafe.ai) comes in. Jev is a System One
+model that turns natural language plus application state into **typed
+judgments**: a structured score with a confidence, not a prose completion you
+have to parse. Airlock uses Jev the way you'd use a programming primitive —
+
+- each action is scored along four fixed dimensions (scope / exposure / impact /
+  reversibility), and Jev's low-confidence answers are explicitly discarded
+  rather than averaged in;
+- session-level judgments label what a run is _doing_ and whether it
+  _succeeded_, not just whether individual commands looked dangerous.
+
+Deterministic rules provide the floor — guaranteed hits for known-bad patterns —
+and Jev provides judgment on everything else. The combiner in
+`src/server/policy/` merges both, so the console explains _why_ an action was
+flagged in plain English ("could read or transmit sensitive data") rather than
+which regex matched.
 
 ## Quickstart
 
@@ -25,6 +48,9 @@ replay the bundled multi-agent fixture against the running server:
 ```bash
 pnpm replay fixtures/sessions/research-fanout.jsonl
 ```
+
+Set `TYPESAFE_API_KEY` to activate the Jev provider; without it Airlock runs on
+rules alone.
 
 ## Pointing Claude Code at it
 
@@ -70,8 +96,9 @@ Two classifier providers run per action (`airlock.config.ts`):
 
 - **`rules`** — deterministic: per-tool-kind baselines + 18 pattern rules
   (pipe-to-shell, credential paths, `.env` reads, force push, …). Always on.
-- **`jev`** — TypeSafe Jev System One scoring, one question per risk dimension.
-  Active when `TYPESAFE_API_KEY` is set in the environment; skipped otherwise.
+- **`jev`** — TypeSafe Jev System One scoring, one judgment per risk dimension,
+  each returned with its own confidence. Active when `TYPESAFE_API_KEY` is set
+  in the environment; skipped otherwise.
 
 Provider scores merge in `src/server/policy/` and are decided by fixed
 thresholds — `deny ≥ 0.80`, `review ≥ 0.50`, `allow` only at confidence ≥ 0.6 —
